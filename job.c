@@ -21,3 +21,58 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ******************************************************************************/
+
+#include <stdio.h>
+#include "job.h"
+
+
+/**
+ * Initialises the state
+ */
+void job_state_create( job_state_t * state )
+{
+  state->finished = 0;
+}
+
+
+/**
+ * Destroys the job state
+ */
+void job_state_destroy( job_state_t * state )
+{
+
+}
+
+
+/**
+ * Executes a job
+ */
+void job_run( job_t * job )
+{
+  int count = 0, i;
+  for ( i = 0; i < 1000000; ++i ) 
+  {
+    if ( i & 1 )
+    {
+      ++count;
+    }
+  }
+}
+
+
+/**
+ * Returns information about the next chunk which should be processed
+ * @param job
+ * @return Returns -1 if no jobs available
+ */
+int job_next( job_state_t * state, job_t * job )
+{
+  static int a = 0;
+  if ( ++a >= 10000 ) {
+    state->finished = 1;
+    return -1;
+  }
+
+  job->divider_chunk = job->filtered_chunk = a;
+  return 0;
+}

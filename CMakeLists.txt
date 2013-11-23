@@ -12,4 +12,9 @@ SET( HEADERS chunk.h
              job.h
              thread.h )
 
+SET( LIBS pthread )
+
+SET( CMAKE_C_FLAGS -g )
+
 ADD_EXECUTABLE( primes ${SOURCES} ${HEADERS} )
+TARGET_LINK_LIBRARIES( primes ${LIBS} )

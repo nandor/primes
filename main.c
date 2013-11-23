@@ -124,9 +124,23 @@ void check_options( options_t * opt )
 int main( int argc, char ** argv )
 {
   options_t opt;
+  thread_pool_t pool;
+  job_state_t state;
 
   read_options( &opt, argc, argv );
   check_options( &opt );
 
+  job_state_create( &state );
+  thread_pool_create( &pool, &state, opt.num_threads );
+
+  while ( !state.finished )
+  {
+    sleep( 1 );
+  }
+
+  thread_pool_destroy( &pool );
+  job_state_destroy( &state );
+
+  pthread_exit( NULL );
   return EXIT_SUCCESS;
 }

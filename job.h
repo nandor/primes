@@ -25,4 +25,26 @@ THE SOFTWARE.
 #ifndef JOB_H
 #define JOB_H
 
+
+typedef struct
+{
+  int divider_chunk;
+  int filtered_chunk;
+} job_t;
+
+
+typedef struct
+{
+  volatile int finished;
+} job_state_t;
+
+
+void job_state_create( job_state_t * );
+void job_state_destroy( job_state_t * );
+
+
+void job_run( job_t * );
+int job_next( job_state_t *, job_t * );
+
+
 #endif

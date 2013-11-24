@@ -22,122 +22,105 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ******************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <limits.h>
 #include <string.h>
 #include "job.h"
 #include "chunk.h"
+#include "state.h"
+#include "thread.h"
 
-
+typedef struct _column_t
+{
+  int n;
+  int all;
+  int working;
+  int done;
+} column_t;
 
 /**
- * Initialises the state
+ * Run the first job
  */
-void job_state_create( job_state_t * state )
+void startup_job( state_t * s )
 {
+  printf( "Startup job" );
+}
+
+/**
+ * Initialises the job manager
+ */
+void jobs_create( state_t * s )
+{
+  jobs_t * j;
   job_t init;
-  init.divider_chunk = -1;
-  init.filtered_chunk = 1;
-  job_run(&init);
-
-  state->finished = 0;
-  state->processed_until = 1;
-  state->finished_until = 1;
-  state->working_on = 0;
-  // First try
-  state->aim = 20;
+  size_t sz;
   int i;
-  memset( &state->processed, 0, sizeof( state->processed ) );
 
-  for (i=0; i<100; i++)
+  if ( !( j = s->job_mngr ) )
+    return;
+
+  // Run the first job, chunk 1
+  startup_job( s );
+
+  // Allocate storage for the queue
+  sz = sizeof( column_t ) * 100;
+  assert( j->processed = (column_t*)malloc( sz ) );
+  memset( j->processed, 0, sz );
+  for ( i = 0; i < 100; i++)
   {
-    state->processed[i].n = -1;
+    j->processed[ i ].n = -1;
+  }
+
+  // Setup
+  j->finished = 0;
+  j->processed_until = 1;
+  j->finished_until = 1;
+  j->working_on = 0;
+  j->aim = 3;
+
+}
+
+/**
+ * Destroys the job manager
+ */
+void jobs_destroy( state_t * s )
+{
+  jobs_t * j;
+
+  if ( !s || !( j = s->job_mngr ) )
+    return;
+
+  if ( j->processed )
+  {
+    free( j->processed );
+    j->processed = NULL;
   }
 }
-
-
-/**
- * Destroys the job state
- */
-void job_state_destroy( job_state_t * state )
-{
-
-}
-
 
 /**
  * Executes a job
  */
-void job_run( job_t * job )
+void jobs_run( state_t * s, job_t * job )
 {
-  job->finished = 0;
+  sleep( 1 );
   printf( "filtered %d with %d on thread %u\n", job->filtered_chunk, job->divider_chunk,
                                                 pthread_self( ) );
-  job->finished = 1;
-  sleep(1);
 }
 
-
 /**
- * Returns information about the next chunk which should be processed
- * @param job
- * @return Returns 0 is no jobs are available
+ * Finds the next job
+ * @return Returns 1 if a job was found
  */
-int job_next( job_state_t * state, job_t * job )
+int jobs_next( state_t * s, job_t * job )
 {
-  // No more jobs left
-  if ( state->finished )
-  {
+  jobs_t * j;
+
+  if ( !( j = s->job_mngr ) )
     return 0;
-  }
 
-  // updating state with finished job, saving/loading new chunks if necessary
-  if ( job->finished ) 
-  {
-    // pre: state->processed contains the column for divider_chunk 
-    // Finding the chunk job was working on
-    int k = 0;
-    while ( state->processed[k].n != job->filtered_chunk ) 
-    {
-      k++;
-    }
-
-    // Updating, loading new if finished
-    if ( ++state->processed[k].done == state->processed[k].all )
-    {
-      // Finished filtering a chunk
-      save_finished_chunk(state->processed[k].n);
-      state->working_on--;
-
-      // If all of the previous chunks are finished
-      if ( state->finished_until+1 == state->processed[k].n ) 
-      {
-        state->finished_until++;
-      }
-
-      // If this is the last chunk needed
-      if ( state->aim == state->finished_until )
-      {
-        if ( state->working_on == 0)
-        {
-          state->finished = 1;
-        }
-        return 0;
-      }
-      else
-      {
-        // If there is a new chunk to be loaded to the place of the finished one
-        if ( state->processed_until < state->aim )
-        {
-          state->working_on++;
-          load_new_chunk(++state->processed_until);
-          state->processed[k].n = state->processed_until;
-          state->processed[k].all = state->processed_until-1;
-          state->processed[k].working = state->processed[k].done = 0;
-        }
-      }
-    }
-  }
   /*
   int kk = 0;
   for (kk = 0; kk<10; kk++)
@@ -146,20 +129,21 @@ int job_next( job_state_t * state, job_t * job )
   }
   printf("\n");
   */
+
   // Finding next available job
   job_t next;
   int next_index;
   next.filtered_chunk = INT_MAX;
 
-  // Looking for the smallest chunk we can work on 
+  // Looking for the smallest chunk we can work on
   int k = 0;
-  while ( state->processed[k].n != -1 )
+  while ( j->processed[k].n != -1 )
   {
-    if (state->processed[k].working < state->finished_until
-        && state->processed[k].working < state->processed[k].all
-        && state->processed[k].n < next.filtered_chunk )
+    if (j->processed[k].working < j->finished_until
+        && j->processed[k].working < j->processed[k].all
+        && j->processed[k].n < next.filtered_chunk )
     {
-      next.filtered_chunk = state->processed[k].n;
+      next.filtered_chunk = j->processed[k].n;
       next_index = k;
     }
     k++;
@@ -169,25 +153,84 @@ int job_next( job_state_t * state, job_t * job )
   if ( next.filtered_chunk == INT_MAX )
   {
     // If we can work on a new chunk
-    if ( state->processed_until < state->aim )
+    if ( j->processed_until < j->aim )
     {
-      state->working_on++;
-      load_new_chunk(++state->processed_until);
-      state->processed[k].n = state->processed_until;
-      state->processed[k].all = state->processed[k].n-1;
-      state->processed[k].working = state->processed[k].done = 0;
-      next.filtered_chunk = state->processed[k].n;
+      j->working_on++;
+      load_new_chunk(++j->processed_until);
+      j->processed[k].n = j->processed_until;
+      j->processed[k].all = j->processed[k].n-1;
+      j->processed[k].working = j->processed[k].done = 0;
+      next.filtered_chunk = j->processed[k].n;
       next_index = k;
     }
     else
     {
       // There is no work to be done
-      job->finished = 0;
       return 0;
     }
   }
 
-  next.divider_chunk = ++state->processed[next_index].working;
+  next.divider_chunk = ++j->processed[next_index].working;
   *job = next;
   return 1;
 }
+
+/**
+ * Marks a job as finished so other threads can fetch jobs
+ * which depend on this one, calls threads_finish when there
+ * are no more available jobs
+ * @param s
+ * @param job
+ */
+void jobs_finish( state_t * s, job_t * job )
+{
+  jobs_t * j;
+
+  if ( !( j = s->job_mngr ) )
+    return;
+
+  // pre: state->processed contains the column for divider_chunk
+  // Finding the chunk job was working on
+  int k = 0;
+  while ( j->processed[k].n != job->filtered_chunk )
+  {
+    k++;
+  }
+
+  // Updating, loading new if finished
+  if ( ++j->processed[k].done == j->processed[k].all )
+  {
+    // Finished filtering a chunk
+    save_finished_chunk(j->processed[k].n);
+    j->working_on--;
+
+    // If all of the previous chunks are finished
+    if ( j->finished_until+1 == j->processed[k].n )
+    {
+      j->finished_until++;
+    }
+
+    // If this is the last chunk needed
+    if ( j->aim == j->finished_until )
+    {
+      if ( j->working_on == 0)
+      {
+        j->finished = 1;
+      }
+      return;
+    }
+    else
+    {
+      // If there is a new chunk to be loaded to the place of the finished one
+      if ( j->processed_until < j->aim )
+      {
+        j->working_on++;
+        load_new_chunk(++j->processed_until);
+        j->processed[k].n = j->processed_until;
+        j->processed[k].all = j->processed_until-1;
+        j->processed[k].working = j->processed[k].done = 0;
+      }
+    }
+  }
+}
+

@@ -22,27 +22,45 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ******************************************************************************/
 
-#ifndef THREAD_H
-#define THREAD_H
+#ifndef STATE_H
+#define STATE_H
 
-#include <pthread.h>
+#include <setjmp.h>
+#include <stdint.h>
 
-typedef struct _state_t state_t;
+typedef struct _jobs_t    jobs_t;
+typedef struct _threads_t threads_t;
 
-typedef struct _threads_t
+typedef struct _state_t
 {
-  pthread_t * threads;
-  pthread_mutex_t queue_lock;
-  pthread_mutex_t exit_lock;
-  pthread_cond_t exit_cond;
+  /// Number of threads
+  int thread_count;
 
-  volatile char running;
-  volatile char finished;
-} threads_t;
+  /// Number of chunks
+  int chunk_count;
 
-void threads_create( state_t * );
-void threads_destroy( state_t * );
-void threads_wait( state_t * );
-void threads_finish( state_t * );
+  /// Size of a chunk
+  int64_t chunk_size;
+
+  /// Max cache usage
+  int64_t cache_limit;
+
+  /// Job manager
+  jobs_t * job_mngr;
+
+  /// Thread manager
+  threads_t * thread_mngr;
+
+  /// Error handler
+  jmp_buf err_jump;
+
+  /// Error message
+  char * err_msg;
+} state_t;
+
+void state_create( state_t * state );
+void state_error( state_t * state, const char * fmt, ... );
+void state_run( state_t * state );
+void state_destroy( state_t * state );
 
 #endif

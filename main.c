@@ -23,24 +23,11 @@ THE SOFTWARE.
 ******************************************************************************/
 
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <getopt.h>
-#include "job.h"
-#include "chunk.h"
-#include "thread.h"
-
-
-/**
- * Holds the configuration
- */
-typedef struct
-{
-  /// Number of threads
-  int num_threads;
-  /// Size of a chunk ( multiple of MB )
-  int chunk_size;
-} options_t;
-
+#include "state.h"
 
 /**
  * Prints the commad line options
@@ -49,49 +36,66 @@ void print_options( )
 {
   fputs( "primes - multithreaded prime sieve", stderr );
   fputs( "Usage: primes [args]\n", stderr );
-  fputs( "  --threads=<count> Sets the number of threads\n", stderr );
-  fputs( "  --chunk=<count>   Sets the size of a chunk", stderr );
+  fputs( "  --threads=<count>      Sets the number of threads\n", stderr );
+  fputs( "  --chunks=<count>       Sets the number of chunks\n", stderr );
+  fputs( "  --cache-limit=<limit>) Sets max cache usage\n", stderr );
+  fputs( "  --size=<size>          Sets the size of a chunk\n", stderr );
 }
 
 
 /**
  * Parses command line arguments
- * @param opt  Options object
+ * @param state
  * @param argc
  * @param argv
  */
-void read_options( options_t * opt, int argc, char ** argv )
+void read_options( state_t * s, int argc, char ** argv )
 {
   int c, idx;
 
-  opt->num_threads = 2;
-  opt->chunk_size  = 128 << 20;
+  s->thread_count = 2;
+  s->chunk_count = 100;
+  s->chunk_size = 128ll << 20;
+  s->cache_limit = 2048ll << 20;
 
   static struct option desc[ ] =
   {
     { "threads", required_argument, 0, 't' },
-    { "chunk",   required_argument, 0, 'c' },
+    { "chunks",  required_argument, 0, 'c' },
+    { "size",    required_argument, 0, 's' },
+    { "cache",   required_argument, 0, 'l' },
     { "help",    no_argument,       0, 'h' }
   };
 
-  while ( ( c = getopt_long( argc, argv, "t:c:h", desc, &idx ) ) != -1 )
+  while ( ( c = getopt_long( argc, argv, "t:c:s:h", desc, &idx ) ) != -1 )
   {
     switch ( c )
     {
       case 't':
       {
-        opt->num_threads = atoi( optarg );
+        s->thread_count = atoi( optarg );
         break;
       }
       case 'c':
       {
-        opt->chunk_size = atoi( optarg ) << 20;
+        s->chunk_count = atoi( optarg );
         break;
       }
-      case 'h': 
+      case 's':
+      {
+        s->chunk_size = (int64_t)atoi( optarg ) << 20;
+        break;
+      }
+      case 'l':
+      {
+        s->cache_limit = (int64_t)atoi( optarg ) << 20;
+        break;
+      }
+      case 'h':
       {
         print_options( );
-        exit( EXIT_FAILURE );
+        state_destroy( s );
+        exit( EXIT_SUCCESS );
       }
     }
   }
@@ -100,21 +104,21 @@ void read_options( options_t * opt, int argc, char ** argv )
 
 /**
  * Checks if the arguments are valid
- * @param opt Options object
+ * @param state
  */
-void check_options( options_t * opt )
+void check_options( state_t * s )
 {
-  if ( opt->num_threads < 1 )
-  {
-    fprintf( stderr, "Invalid thread count: %d\n", opt->num_threads );
-    exit( EXIT_FAILURE );
-  }
+  if ( s->thread_count < 1 )
+    state_error( s, "Invalid thread count: %d", s->thread_count );
 
-  if ( opt->chunk_size < ( 1 << 20 ) )
-  {
-    fprintf( stderr, "Invalid chunk size: %d\n", opt->chunk_size );
-    exit( EXIT_FAILURE );
-  }
+  if ( s->chunk_count < 1 )
+    state_error( s, "Invalid chunk count: %d", s->chunk_count );
+
+  if ( s->chunk_size < ( 1 << 20 ) )
+    state_error( s, "Invalid chunk size: %lld", s->chunk_size );
+
+  if ( s->cache_limit < s->chunk_size * 5ll )
+    state_error( s, "Invalid cache limit: %lld", s->cache_limit );
 }
 
 
@@ -123,24 +127,28 @@ void check_options( options_t * opt )
  */
 int main( int argc, char ** argv )
 {
-  options_t opt;
-  thread_pool_t pool;
-  job_state_t state;
+  state_t state;
 
-  read_options( &opt, argc, argv );
-  check_options( &opt );
+  memset( &state, 0, sizeof( state ) );
 
-  job_state_create( &state );
-  thread_pool_create( &pool, &state, opt.num_threads );
-
-  while ( !state.finished )
+  // Catch errors
+  if ( setjmp( state.err_jump ) )
   {
-    sleep( 1 );
+    if ( state.err_msg )
+      fprintf( stderr, "%s\n", state.err_msg );
+
+    state_destroy( &state );
+    return EXIT_FAILURE;
   }
 
-  thread_pool_destroy( &pool );
-  job_state_destroy( &state );
+  // Configure
+  read_options( &state, argc, argv );
+  check_options( &state );
 
-  pthread_exit( NULL );
+  // Run
+  state_create( &state );
+  state_run( &state );
+  state_destroy( &state );
+
   return EXIT_SUCCESS;
 }

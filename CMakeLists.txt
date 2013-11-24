@@ -6,10 +6,12 @@ PROJECT( primes )
 SET( SOURCES chunk.c
              job.c
              main.c
-             thread.c )
+             state.c
+             thread.c)
 
 SET( HEADERS chunk.h
              job.h
+             state.h
              thread.h )
 
 SET( LIBS pthread )

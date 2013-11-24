@@ -26,112 +26,167 @@ THE SOFTWARE.
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include "state.h"
+#include "job.h"
 #include "thread.h"
 
-
 /**
- * Thread function, calls job_run
- * @param pool_ptr Pointer to the thread pool
+ * Thread function
+ * @param sp State pointer
  */
-void * thread_func( void * pool_ptr )
+void * thread_func( void * sp )
 {
-  thread_pool_t * pool;
   job_t job;
-  int has_next;
+  state_t * s;
+  threads_t * t;
+  int must_finish, has_next;
 
-  pool = (thread_pool_t*)pool_ptr;
-  job.finished = 0;
+  if ( !( s = (state_t*)sp ) || !( t = s->thread_mngr ) )
+    pthread_exit( NULL );
 
-  while ( pool->running ) 
+  must_finish = 0;
+
+  while ( t->running )
   {
-    pthread_mutex_lock( &pool->lock );
-    has_next = job_next( pool->state, &job );
-    pthread_mutex_unlock( &pool->lock );
+    pthread_mutex_lock( &t->queue_lock );
+
+    if ( must_finish )
+      jobs_finish( s, &job );
+
+    has_next = jobs_next( s, &job );
+
+    pthread_mutex_unlock( &t->queue_lock );
 
     if ( has_next )
     {
-      job_run( &job );
+      jobs_run( s, &job );
+      must_finish = 1;
     }
   }
 
   pthread_exit( NULL );
-  return NULL;
 }
 
-
 /**
- * Start the threads which will process the jobs
- * @param pool
- * @param n     Number of threads
+ * Creates new threads
+ * @param s
  */
-void thread_pool_create( thread_pool_t * pool, job_state_t * state, int n )
+void threads_create( state_t * s )
 {
   int i;
   size_t sz;
+  threads_t * t;
+  pthread_attr_t attr;
 
-  assert( pool );
-
-  pool->num_threads = n;
-  pool->state = state;
-  pool->running = 1;
-
-  // Allocate storage space for the thread handles
-  sz = sizeof( pthread_t ) * n;
-  pool->threads = (pthread_t*)malloc( sz );
-  assert( pool->threads );
-  memset( pool->threads, 0, sz );
-
-  // Create the lock object
-  if ( pthread_mutex_init( &pool->lock, NULL ) )
-  {
-    fprintf( stderr, "Cannot create mutex\n" );
-    exit( 0 );
-  }
-
-  // Create suspended threads
-  for ( i = 0; i < n; ++i )
-  {
-    if ( pthread_create( &pool->threads[ i ], NULL, thread_func, pool ) )
-    {
-      fprintf( stderr, "Cannot create thread #%d\n", i );
-      exit( 0 );
-    }
-  }
-}
-
-
-/**
- * Stops all the threads & frees allocated memory
- * @param pool
- */
-void thread_pool_destroy( thread_pool_t * pool )
-{
-  int i;
-
-  if ( !pool )
+  if ( !( t = s->thread_mngr ) )
     return;
 
-  // Tell all the threads to stop
-  pool->running = 0;
+  t->running = 1;
+  t->finished = 0;
 
-  // Stop & free the threads
-  if ( pool->threads )
+  // Initialise the mutex which will sync the job queue
+  if ( pthread_mutex_init( &t->queue_lock, NULL ) )
+    state_error( s, "Cannot create queue mutex" );
+
+  // Initialise the mutex which will be used with the signal
+  if ( pthread_mutex_init( &t->exit_lock, NULL ) )
+    state_error( s, "Cannot create exit mutex" );
+
+  // Initialise the cond variable which will signal
+  // the main thread when we're done
+  if ( pthread_cond_init( &t->exit_cond, NULL) )
+    state_error( s, "Cannot create exit signal" );
+
+  // Allocate storage space for the thread handles
+  sz = sizeof( pthread_t ) * s->thread_count;
+  assert( t->threads = (pthread_t*)malloc( sz ) );
+  memset( t->threads, 0, sz );
+
+  // Create joinable threads with 2Mb stack
+  pthread_attr_init( &attr );
+  pthread_attr_setdetachstate( &attr, PTHREAD_CREATE_JOINABLE );
+  pthread_attr_setstacksize( &attr, 2 << 20 );
+
+  for ( i = 0; i < s->thread_count; ++i )
   {
-    for ( i = 0; i < pool->num_threads; ++i )
+    if ( pthread_create( &t->threads[ i ], &attr, thread_func, s ) )
+      state_error( s, "Cannot create thread #%d", i );
+  }
+
+  pthread_attr_destroy( &attr );
+}
+
+/**
+ * Cleanup
+ * @param s
+ */
+void threads_destroy( state_t * s )
+{
+  threads_t * t;
+  int i;
+
+  if ( !( t = s->thread_mngr ) )
+    return;
+
+  t->running = 0;
+
+  if ( t->threads )
+  {
+    for ( i = 0; i < s->thread_count; ++i )
     {
-      if ( pool->threads[ i ] != 0 )
+      if ( t->threads[ i ] != 0 )
       {
         // Waits for threads to finish
-        pthread_join( pool->threads[ i ], NULL );
-        pthread_detach( pool->threads[ i ] );
-        pool->threads[ i ] = 0;
+        pthread_join( t->threads[ i ], NULL );
+        pthread_detach( t->threads[ i ] );
+        t->threads[ i ] = 0;
       }
     }
 
-    free( pool->threads );
-    pool->threads = NULL;
+    free( t->threads );
+    t->threads = NULL;
   }
 
-  // Free the mutex
-  pthread_mutex_destroy( &pool->lock );
+  pthread_mutex_destroy( &t->queue_lock );
+  pthread_mutex_destroy( &t->exit_lock );
+  pthread_cond_destroy( &t->exit_cond );
+}
+
+/**
+ * Waits until it gets a signal which says that
+ * all threads finished their jobs
+ * @param s
+ */
+void threads_wait( state_t * s )
+{
+  threads_t * t;
+
+  if ( !( t = s->thread_mngr ) || !t->running )
+    return;
+
+  pthread_mutex_lock( &t->exit_lock );
+
+  while ( !t->finished )
+    pthread_cond_wait( &t->exit_cond, &t->exit_lock );
+
+  pthread_mutex_unlock( &t->exit_lock );
+}
+
+/**
+ * Wakes up the main thread when the threads finish
+ * @param s
+ */
+void threads_finish( state_t * s )
+{
+  threads_t * t;
+
+  if ( !( t = s->thread_mngr ) || !t->running )
+    return;
+
+  pthread_mutex_lock( &t->exit_lock);
+
+  t->finished = 1;
+  pthread_cond_signal( &t->exit_cond );
+
+  pthread_mutex_unlock( &t->exit_lock);
 }

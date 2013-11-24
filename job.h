@@ -25,41 +25,29 @@ THE SOFTWARE.
 #ifndef JOB_H
 #define JOB_H
 
+typedef struct _state_t state_t;
+typedef struct _column_t column_t;
+
 typedef struct
 {
   int divider_chunk;
   int filtered_chunk;
-  int finished;
 } job_t;
 
-
-typedef struct
+typedef struct _jobs_t
 {
-  int n;
-  int all;
-  int working;
-  int done;
-} column_t;
-
-
-typedef struct
-{
-  volatile int finished;
-  column_t processed[100];
+  column_t * processed;
   int processed_until;
   int finished_until;
   int aim;
   int working_on;
+  int finished;
+} jobs_t;
 
-} job_state_t;
-
-
-void job_state_create( job_state_t * );
-void job_state_destroy( job_state_t * );
-
-
-void job_run( job_t * );
-int job_next( job_state_t *, job_t * );
-
+void jobs_create( state_t * );
+void jobs_destroy( state_t * );
+void jobs_run( state_t *, job_t * );
+int  jobs_next( state_t *, job_t * );
+void jobs_finish( state_t *, job_t * );
 
 #endif

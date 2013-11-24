@@ -25,4 +25,7 @@ THE SOFTWARE.
 #ifndef CHUNK_H
 #define CHUNK_H
 
+void save_finished_chunk(int);
+void load_new_chunk(int);
+
 #endif

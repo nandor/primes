@@ -25,17 +25,32 @@ THE SOFTWARE.
 #ifndef JOB_H
 #define JOB_H
 
-
 typedef struct
 {
   int divider_chunk;
   int filtered_chunk;
+  int finished;
 } job_t;
 
 
 typedef struct
 {
+  int n;
+  int all;
+  int working;
+  int done;
+} column_t;
+
+
+typedef struct
+{
   volatile int finished;
+  column_t processed[100];
+  int processed_until;
+  int finished_until;
+  int aim;
+  int working_on;
+
 } job_state_t;
 
 

@@ -21,3 +21,17 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ******************************************************************************/
+
+#include <stdio.h>
+
+
+void save_finished_chunk( int a ) 
+{
+  printf( "Finished and saved chunk %d\n", a );
+}
+
+
+void load_new_chunk( int a ) 
+{
+  printf( "Loaded chunk %d\n", a );
+}

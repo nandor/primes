@@ -40,6 +40,7 @@ void * thread_func( void * pool_ptr )
   int has_next;
 
   pool = (thread_pool_t*)pool_ptr;
+  job.finished = 0;
 
   while ( pool->running ) 
   {
@@ -47,7 +48,7 @@ void * thread_func( void * pool_ptr )
     has_next = job_next( pool->state, &job );
     pthread_mutex_unlock( &pool->lock );
 
-    if ( !has_next )
+    if ( has_next )
     {
       job_run( &job );
     }

@@ -68,9 +68,7 @@ void state_error( state_t * state, const char * fmt, ... )
     va_end( ap );
 
     if ( -1 < n && n < size )
-    {
       break;
-    }
 
     size = n > -1 ? ( n + 1 ) : ( size << 1 );
     if ( !( tmp = (char*)realloc( state->err_msg, size ) ) )

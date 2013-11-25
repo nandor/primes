@@ -120,15 +120,16 @@ int jobs_next( state_t * s, job_t * job )
 
   if ( !( j = s->job_mngr ) )
     return 0;
-
   /*
   int kk = 0;
   for (kk = 0; kk<10; kk++)
   {
-    printf("%d ",state->processed[kk].n);
+    printf("%d ", j->processed[kk].n);
   }
   printf("\n");
-  */
+*/
+  if ( j->finished )
+    return 0;
 
   // Finding next available job
   job_t next;
@@ -216,6 +217,7 @@ void jobs_finish( state_t * s, job_t * job )
       if ( j->working_on == 0)
       {
         j->finished = 1;
+        threads_finish( s );
       }
       return;
     }

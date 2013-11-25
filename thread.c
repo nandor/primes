@@ -39,18 +39,17 @@ void * thread_func( void * sp )
   job_t job;
   state_t * s;
   threads_t * t;
-  int must_finish, has_next;
+  int has_next;
 
   if ( !( s = (state_t*)sp ) || !( t = s->thread_mngr ) )
     pthread_exit( NULL );
 
-  must_finish = 0;
-
+  has_next = 0;
   while ( t->running )
   {
     pthread_mutex_lock( &t->queue_lock );
 
-    if ( must_finish )
+    if ( has_next )
       jobs_finish( s, &job );
 
     has_next = jobs_next( s, &job );
@@ -60,7 +59,6 @@ void * thread_func( void * sp )
     if ( has_next )
     {
       jobs_run( s, &job );
-      must_finish = 1;
     }
   }
 

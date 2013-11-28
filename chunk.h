@@ -25,7 +25,29 @@ THE SOFTWARE.
 #ifndef CHUNK_H
 #define CHUNK_H
 
-void save_finished_chunk(int);
-void load_new_chunk(int);
+#include <stdint.h>
+
+typedef struct _state_t state_t;
+
+typedef struct _chunks_t
+{
+  /// File descriptor of the cache file
+  int fd;
+
+  /// Size of the cache file
+  uint64_t dataSize;
+
+  /// Number of primes already computed
+  uint64_t primeCount;
+
+  /// Saves primes to the beginning of the file
+  uint64_t * dataPrimes;
+
+  /// Individual bits accessed by the sieve
+  uint8_t * dataSieve;
+} chunks_t;
+
+void chunks_create( state_t * chunk );
+void chunks_destroy( state_t * chunk );
 
 #endif

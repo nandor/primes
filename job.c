@@ -157,7 +157,7 @@ int jobs_next( state_t * s, job_t * job )
     if ( j->processed_until < j->aim )
     {
       j->working_on++;
-      load_new_chunk(++j->processed_until);
+      //load_new_chunk(++j->processed_until);
       j->processed[k].n = j->processed_until;
       j->processed[k].all = j->processed[k].n-1;
       j->processed[k].working = j->processed[k].done = 0;
@@ -202,7 +202,7 @@ void jobs_finish( state_t * s, job_t * job )
   if ( ++j->processed[k].done == j->processed[k].all )
   {
     // Finished filtering a chunk
-    save_finished_chunk(j->processed[k].n);
+    //save_finished_chunk(j->processed[k].n);
     j->working_on--;
 
     // If all of the previous chunks are finished
@@ -227,7 +227,7 @@ void jobs_finish( state_t * s, job_t * job )
       if ( j->processed_until < j->aim )
       {
         j->working_on++;
-        load_new_chunk(++j->processed_until);
+        //load_new_chunk(++j->processed_until);
         j->processed[k].n = j->processed_until;
         j->processed[k].all = j->processed_until-1;
         j->processed[k].working = j->processed[k].done = 0;

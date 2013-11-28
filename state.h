@@ -30,6 +30,7 @@ THE SOFTWARE.
 
 typedef struct _jobs_t    jobs_t;
 typedef struct _threads_t threads_t;
+typedef struct _chunks_t  chunks_t;
 
 typedef struct _state_t
 {
@@ -45,11 +46,17 @@ typedef struct _state_t
   /// Max cache usage
   int64_t cache_limit;
 
+  /// Sieve file name
+  char * cache_file;
+
   /// Job manager
   jobs_t * job_mngr;
 
   /// Thread manager
   threads_t * thread_mngr;
+
+  /// Chunk manager
+  chunks_t * chunk_mngr;
 
   /// Error handler
   jmp_buf err_jump;

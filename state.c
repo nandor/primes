@@ -29,6 +29,7 @@ THE SOFTWARE.
 #include <string.h>
 #include "state.h"
 #include "thread.h"
+#include "chunk.h"
 #include "job.h"
 
 /**
@@ -41,6 +42,11 @@ void state_create( state_t * state )
   assert( state->job_mngr = (jobs_t*)malloc( sizeof( jobs_t ) ) );
   memset( state->job_mngr, 0, sizeof( jobs_t ) );
   jobs_create( state );
+
+  // Initialise the chunk manager
+  assert( state->chunk_mngr = (chunks_t*)malloc( sizeof( chunks_t ) ) );
+  memset( state->chunk_mngr, 0, sizeof( jobs_t ) );
+  chunks_create( state );
 
   // Initialise the thread manager
   assert( state->thread_mngr = (threads_t*)malloc( sizeof( threads_t ) ) );
@@ -103,14 +109,27 @@ void state_destroy( state_t * state )
     {
       jobs_destroy( state );
       free( state->job_mngr );
-      state->job_mngr = 0;
+      state->job_mngr = NULL;
+    }
+
+    if ( state->chunk_mngr )
+    {
+      chunks_destroy( state );
+      free( state->chunk_mngr );
+      state->chunk_mngr = NULL;
     }
 
     if ( state->thread_mngr )
     {
       threads_destroy( state );
       free( state->thread_mngr );
-      state->thread_mngr = 0;
+      state->thread_mngr = NULL;
+    }
+
+    if ( state->cache_file )
+    {
+      free( state->cache_file );
+      state->cache_file = NULL;
     }
   }
 }

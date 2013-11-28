@@ -22,16 +22,69 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ******************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include "chunk.h"
+#include "state.h"
 
-
-void save_finished_chunk( int a ) 
+void chunks_create( state_t * s )
 {
-  printf( "Finished and saved chunk %d\n", a );
+  chunks_t * c;
+  void * data;
+  struct stat st;
+
+  if ( !( c = s->chunk_mngr) )
+    return;
+
+  if ( ( c->fd = open( s->cache_file, O_CREAT | O_RDWR, 0666 ) ) < 0 )
+  {
+    state_error( s, "Cannot create cache file '%s'", s->cache_file );
+  }
+
+  if ( fstat( c->fd, &st ) < 0 )
+  {
+    state_error( s, "Cannot retrieve cache file size" );
+  }
+
+  c->dataSize = s->chunk_count * s->chunk_size;
+  if ( st.st_size < c->dataSize )
+  {
+    uint8_t end = 0;
+
+    lseek( c->fd, s->chunk_count * s->chunk_size - 1, SEEK_SET );
+    write( c->fd, &end, 1 );
+    lseek( c->fd, 0, SEEK_SET );
+  }
+
+  data = mmap( 0, c->dataSize, PROT_READ | PROT_WRITE, MAP_SHARED, c->fd, 0 );
+  if ( data == MAP_FAILED )
+  {
+    state_error( s, "Cannot mmap file" );
+  }
+
+  c->dataSieve = c->dataPrimes = data;
 }
 
-
-void load_new_chunk( int a ) 
+void chunks_destroy( state_t * s )
 {
-  printf( "Loaded chunk %d\n", a );
+  chunks_t * c;
+
+  if ( !( c = s->chunk_mngr) )
+    return;
+
+  if ( c->dataSieve )
+  {
+    munmap( c->dataSieve, c->dataSize );
+    c->dataSieve = NULL;
+    c->dataPrimes = NULL;
+  }
+
+  if ( c->fd > 0) {
+    close( c-> fd );
+    c->fd = -1;
+  }
 }

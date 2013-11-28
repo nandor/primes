@@ -57,6 +57,7 @@ void read_options( state_t * s, int argc, char ** argv )
   s->chunk_count = 100;
   s->chunk_size = 128ll << 20;
   s->cache_limit = 2048ll << 20;
+  s->cache_file = strdup( "cache.bin" );
 
   static struct option desc[ ] =
   {
@@ -64,10 +65,11 @@ void read_options( state_t * s, int argc, char ** argv )
     { "chunks",  required_argument, 0, 'c' },
     { "size",    required_argument, 0, 's' },
     { "cache",   required_argument, 0, 'l' },
+    { "file",    required_argument, 0, 'f' },
     { "help",    no_argument,       0, 'h' }
   };
 
-  while ( ( c = getopt_long( argc, argv, "t:c:s:h", desc, &idx ) ) != -1 )
+  while ( ( c = getopt_long( argc, argv, "t:c:s:f:h", desc, &idx ) ) != -1 )
   {
     switch ( c )
     {
@@ -89,6 +91,14 @@ void read_options( state_t * s, int argc, char ** argv )
       case 'l':
       {
         s->cache_limit = (int64_t)atoi( optarg ) << 20;
+        break;
+      }
+      case 'f':
+      {
+        if ( s->cache_file )
+          free( s->cache_file );
+
+        s->cache_file = strdup( optarg );
         break;
       }
       case 'h':

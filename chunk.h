@@ -38,13 +38,19 @@ typedef struct _chunks_t
   uint64_t dataSize;
 
   /// Number of primes already computed
-  uint64_t primeCount;
+  uint64_t prime_count;
+
+  // Maps the index of the first prime in each chunk
+  uint64_t * first_prime_index;
+
+  // Number of chunks processed;
+  uint64_t chunks_count; 
 
   /// Saves primes to the beginning of the file
-  uint64_t * dataPrimes;
+  uint64_t * data_primes;
 
   /// Individual bits accessed by the sieve
-  uint8_t * dataSieve;
+  uint8_t * data_sieve;
 } chunks_t;
 
 void chunks_create( state_t * chunk );

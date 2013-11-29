@@ -40,15 +40,15 @@ void chunks_create( state_t * s )
   if ( !( c = s->chunk_mngr) )
     return;
 
+  c->first_prime_index = (uint64_t*)malloc( sizeof(uint64_t) * s->chunk_count );
+  if ( !c->first_prime_index )
+    state_error( s, "Cannot create chunk index map" );
+
   if ( ( c->fd = open( s->cache_file, O_CREAT | O_RDWR, 0666 ) ) < 0 )
-  {
     state_error( s, "Cannot create cache file '%s'", s->cache_file );
-  }
 
   if ( fstat( c->fd, &st ) < 0 )
-  {
     state_error( s, "Cannot retrieve cache file size" );
-  }
 
   c->dataSize = s->chunk_count * s->chunk_size;
   if ( st.st_size < c->dataSize )
@@ -66,7 +66,8 @@ void chunks_create( state_t * s )
     state_error( s, "Cannot mmap file" );
   }
 
-  c->dataSieve = c->dataPrimes = data;
+  c->data_sieve = (uint8_t*)data;
+  c->data_primes = (uint64_t*)data;
 }
 
 void chunks_destroy( state_t * s )
@@ -76,11 +77,11 @@ void chunks_destroy( state_t * s )
   if ( !( c = s->chunk_mngr) )
     return;
 
-  if ( c->dataSieve )
+  if ( c->data_sieve )
   {
-    munmap( c->dataSieve, c->dataSize );
-    c->dataSieve = NULL;
-    c->dataPrimes = NULL;
+    munmap( c->data_sieve, c->dataSize );
+    c->data_sieve = NULL;
+    c->data_primes = NULL;
   }
 
   if ( c->fd > 0) {

@@ -49,5 +49,6 @@ void jobs_destroy( state_t * );
 void jobs_run( state_t *, job_t * );
 int  jobs_next( state_t *, job_t * );
 void jobs_finish( state_t *, job_t * );
+void cross_out (state_t *, uint64_t);
 
 #endif

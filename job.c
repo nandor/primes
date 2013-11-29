@@ -105,9 +105,36 @@ void jobs_destroy( state_t * s )
  */
 void jobs_run( state_t * s, job_t * job )
 {
-  sleep( 1 );
-  printf( "filtered %d with %d on thread %u\n", job->filtered_chunk, job->divider_chunk,
-                                                pthread_self( ) );
+  //sleep( 1 );
+  int divider_chunk = job->divider_chunk;
+  int filtered_chunk = job->filtered_chunk;
+
+  uint64_t first_filtered = (filtered_chunk) * s->chunk_size;
+  uint64_t filter_until = (filtered_chunk + 1 ) * s->chunk_size;
+  uint64_t act_filter;
+
+  int i;
+  for (i = s->chunk_mngr->first_prime_index[divider_chunk];
+       i < s->chunk_mngr->first_prime_index[divider_chunk+1]; i++ )
+  {
+    act_filter = s->chunk_mngr->data_primes[i];
+    uint64_t cancel_n = (first_filtered / act_filter) * act_filter;
+    if (cancel_n < first_filtered ) cancel_n += act_filter;
+    while (cancel_n < filter_until ) 
+    {
+      cross_out(s, cancel_n);
+      cancel_n += act_filter;
+    }
+  }
+ /* printf( "filtered %d with %d on thread %u\n", job->filtered_chunk, job->divider_chunk,
+                                                pthread_self( ) );*/
+}
+
+void cross_out (state_t * s, uint64_t n) {
+  uint64_t byte_number = n >> 3;
+  uint64_t mod = n & 7;
+  s->chunk_mngr->data_sieve[byte_number] =
+    s->chunk_mngr->data_sieve[byte_number] & (~(1ull << mod));
 }
 
 /**

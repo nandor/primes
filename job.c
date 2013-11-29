@@ -46,8 +46,42 @@ typedef struct _column_t
  */
 void startup_job( state_t * s )
 {
-  printf( "Startup job" );
-}
+  uint8_t * bitset;
+  uint64_t limit, step, i, j;
+  chunks_t * c;
+
+  if ( !( c = s->chunk_mngr ) )
+      return;
+
+  // Allocate a separate bitset so we don't overwrite stuff
+  assert( bitset = (uint8_t*)malloc( s->chunk_size ) );
+  memset( bitset, 0, s->chunk_size );
+
+  limit = s->chunk_size << 4;
+  for ( i = 1; i * ( i + 1ull ) << 1ull < limit; ++i )
+  {
+    if ( ! ( bitset[ i >> 3ull ] & ( 1 << ( i & 7 ) ) ) )
+    {
+      for ( j = i * ( i + 1ull ) << 1ull;
+            ( j << 1ull ) + 1ull < limit;
+            j += ( i << 1ull ) + 1ull )
+      {
+        bitset[ j >> 3ull ] |= 1ull << ( j & 7ull );
+      }
+    }
+  }
+
+  c->dataPrimes[ c->primeCount++ ] = 2ull;
+  for ( i = 1ull; ( i << 1ull ) + 1ull < limit; ++i )
+  {
+    if ( ! ( bitset[ i >> 3ull ] & ( 1ull << ( i & 7ull ) ) ) )
+    {
+      c->dataPrimes[ c->primeCount++ ] = ( i << 1 ) + 1;
+    }
+  }
+
+  free( bitset );
+ }
 
 /**
  * Initialises the job manager

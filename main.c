@@ -55,7 +55,7 @@ void read_options( state_t * s, int argc, char ** argv )
 
   s->thread_count = 2;
   s->chunk_count = 100;
-  s->chunk_size = 128ll << 20;
+  s->chunk_size = 1ll << 20;
   s->cache_limit = 2048ll << 20;
   s->cache_file = strdup( "cache.bin" );
 

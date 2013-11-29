@@ -38,15 +38,15 @@ THE SOFTWARE.
  */
 void state_create( state_t * state )
 {
-  // Initialise the job manager
-  assert( state->job_mngr = (jobs_t*)malloc( sizeof( jobs_t ) ) );
-  memset( state->job_mngr, 0, sizeof( jobs_t ) );
-  jobs_create( state );
-
   // Initialise the chunk manager
   assert( state->chunk_mngr = (chunks_t*)malloc( sizeof( chunks_t ) ) );
   memset( state->chunk_mngr, 0, sizeof( jobs_t ) );
   chunks_create( state );
+
+  // Initialise the job manager
+  assert( state->job_mngr = (jobs_t*)malloc( sizeof( jobs_t ) ) );
+  memset( state->job_mngr, 0, sizeof( jobs_t ) );
+  jobs_create( state );
 
   // Initialise the thread manager
   assert( state->thread_mngr = (threads_t*)malloc( sizeof( threads_t ) ) );

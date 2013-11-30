@@ -39,26 +39,44 @@ void * thread_func( void * sp )
   job_t job;
   state_t * s;
   threads_t * t;
-  int has_next;
+  int has_next, must_save;
 
   if ( !( s = (state_t*)sp ) || !( t = s->thread_mngr ) )
     pthread_exit( NULL );
 
-  has_next = 0;
+  has_next = 0, must_save = 0;
   while ( t->running )
   {
     pthread_mutex_lock( &t->queue_lock );
 
-    if ( has_next )
-      jobs_finish( s, &job );
-
-    has_next = jobs_next( s, &job );
-
-    pthread_mutex_unlock( &t->queue_lock );
-
+    // must_save will be one if a chunk must be saved
+    // if jobs_finish will receive 1 for must_save,
+    // it will know that it can execute stuff which
+    // needs to be after a chunk is saved
     if ( has_next )
     {
-      jobs_run( s, &job );
+      jobs_finish( s, &job, &must_save );
+    }
+
+    // If the last processed chunk must be saved,
+    // we lock on c->data_primes and save it
+    if ( must_save )
+    {
+      pthread_mutex_unlock( &t->queue_lock );
+
+      pthread_mutex_lock( &t->save_lock );
+      jobs_save_finished( s, job.filtered_chunk);
+      pthread_mutex_unlock( &t->save_lock );
+    }
+
+    // Otherwise, we process a new chunk
+    else
+    {
+      has_next = jobs_next( s, &job );
+      pthread_mutex_unlock( &t->queue_lock );
+
+      if ( has_next )
+        jobs_run( s, &job );
     }
   }
 
@@ -89,6 +107,10 @@ void threads_create( state_t * s )
   // Initialise the mutex which will be used with the signal
   if ( pthread_mutex_init( &t->exit_lock, NULL ) )
     state_error( s, "Cannot create exit mutex" );
+
+  // Initialse the mutex which will guard the data_primes array
+  if ( pthread_mutex_init( &t->save_lock, NULL ) )
+    state_error( s, "Cannot create save mutex" );
 
   // Initialise the cond variable which will signal
   // the main thread when we're done
@@ -147,6 +169,7 @@ void threads_destroy( state_t * s )
 
   pthread_mutex_destroy( &t->queue_lock );
   pthread_mutex_destroy( &t->exit_lock );
+  pthread_mutex_destroy( &t->save_lock );
   pthread_cond_destroy( &t->exit_cond );
 }
 

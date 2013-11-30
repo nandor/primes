@@ -38,8 +38,9 @@ void print_options( )
   fputs( "Usage: primes [args]\n", stderr );
   fputs( "  --threads=<count>      Sets the number of threads\n", stderr );
   fputs( "  --chunks=<count>       Sets the number of chunks\n", stderr );
-  fputs( "  --cache-limit=<limit>) Sets max cache usage\n", stderr );
+  fputs( "  --cache=<limit>)       Sets max cache usage\n", stderr );
   fputs( "  --size=<size>          Sets the size of a chunk\n", stderr );
+  fputs( "  --file=<path>)         Sets the output file\n", stderr );
 }
 
 
@@ -54,7 +55,7 @@ void read_options( state_t * s, int argc, char ** argv )
   int c, idx;
 
   s->thread_count = 2;
-  s->chunk_count = 100;
+  s->chunk_count = 10;
   s->chunk_size = 1ll << 20;
   s->cache_limit = 2048ll << 20;
   s->cache_file = strdup( "cache.bin" );
@@ -160,5 +161,6 @@ int main( int argc, char ** argv )
   state_run( &state );
   state_destroy( &state );
 
+  pthread_exit( NULL );
   return EXIT_SUCCESS;
 }

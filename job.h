@@ -34,21 +34,24 @@ typedef struct
   int filtered_chunk;
 } job_t;
 
+
 typedef struct _jobs_t
 {
   column_t * processed;
+  uint8_t * chunk_saved;
   int processed_until;
   int finished_until;
   int aim;
   int working_on;
   int finished;
+  int last_saved;
 } jobs_t;
 
 void jobs_create( state_t * );
 void jobs_destroy( state_t * );
 void jobs_run( state_t *, job_t * );
 int  jobs_next( state_t *, job_t * );
-void jobs_finish( state_t *, job_t * );
+void jobs_finish( state_t *, job_t *, int * save );
 void cross_out (state_t *, uint64_t);
 
 #endif

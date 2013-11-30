@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -51,6 +52,7 @@ void chunks_create( state_t * s )
     state_error( s, "Cannot retrieve cache file size" );
 
   c->dataSize = s->chunk_count * s->chunk_size;
+  printf("%u\n",c->dataSize);
   if ( st.st_size < c->dataSize )
   {
     uint8_t end = 0;
@@ -82,6 +84,12 @@ void chunks_destroy( state_t * s )
     munmap( c->data_sieve, c->dataSize );
     c->data_sieve = NULL;
     c->data_primes = NULL;
+  }
+
+  if ( c->first_prime_index )
+  {
+    free( c->first_prime_index );
+    c->first_prime_index = NULL;
   }
 
   if ( c->fd > 0) {

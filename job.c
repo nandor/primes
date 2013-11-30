@@ -71,14 +71,15 @@ void startup_job( state_t * s )
     }
   }
 
-  c->dataPrimes[ c->primeCount++ ] = 2ull;
+  c->data_primes[ c->prime_count++ ] = 2ull;
   for ( i = 1ull; ( i << 1ull ) + 1ull < limit; ++i )
   {
     if ( ! ( bitset[ i >> 3ull ] & ( 1ull << ( i & 7ull ) ) ) )
     {
-      c->dataPrimes[ c->primeCount++ ] = ( i << 1 ) + 1;
+      c->data_primes[ c->prime_count++ ] = ( i << 1 ) + 1;
     }
   }
+  printf("%u\n",c->prime_count);
 
   free( bitset );
  }
@@ -113,8 +114,8 @@ void jobs_create( state_t * s )
   j->processed_until = 1;
   j->finished_until = 1;
   j->working_on = 0;
-  j->aim = 3;
-
+  j->aim = 7;
+  j->last_saved = 0;
 }
 
 /**
@@ -139,6 +140,11 @@ void jobs_destroy( state_t * s )
  */
 void jobs_run( state_t * s, job_t * job )
 {
+  jobs_t * j;
+
+  if ( !( j = s->job_mngr ) )
+    return;
+
   //sleep( 1 );
   int divider_chunk = job->divider_chunk;
   int filtered_chunk = job->filtered_chunk;
@@ -160,15 +166,37 @@ void jobs_run( state_t * s, job_t * job )
       cancel_n += act_filter;
     }
   }
- /* printf( "filtered %d with %d on thread %u\n", job->filtered_chunk, job->divider_chunk,
-                                                pthread_self( ) );*/
+ printf( "filtered %d with %d on thread %u\n", job->filtered_chunk, job->divider_chunk,
+                                                pthread_self( ) );
 }
 
+
 void cross_out (state_t * s, uint64_t n) {
-  uint64_t byte_number = n >> 3;
-  uint64_t mod = n & 7;
+  uint64_t byte_number = n >> 3ull;
+  uint64_t mod = n & 7ull;
   s->chunk_mngr->data_sieve[byte_number] =
     s->chunk_mngr->data_sieve[byte_number] & (~(1ull << mod));
+}
+
+void jobs_save_finished (state_t * s, int n) 
+{ 
+  n--;
+
+  //for test
+  int valami=100;
+
+  s->chunk_mngr->first_prime_index[n]=s->chunk_mngr->prime_count+1;
+
+  uint64_t i;
+  for (i = n * s->chunk_size; i < (n+1) * s->chunk_size; i++)
+  {
+    if (s->chunk_mngr->data_sieve[i >> 3ull] & (1 << (i & 7) ) != 0)
+    {
+      s->chunk_mngr->data_primes[++s->chunk_mngr->prime_count] = i;
+      if (--valami>0) printf("%u ",s->chunk_mngr->data_sieve[i >> 3ull]);
+    }
+  }
+
 }
 
 /**
@@ -218,7 +246,7 @@ int jobs_next( state_t * s, job_t * job )
     if ( j->processed_until < j->aim )
     {
       j->working_on++;
-      //load_new_chunk(++j->processed_until);
+      ++j->processed_until;
       j->processed[k].n = j->processed_until;
       j->processed[k].all = j->processed[k].n-1;
       j->processed[k].working = j->processed[k].done = 0;
@@ -244,30 +272,29 @@ int jobs_next( state_t * s, job_t * job )
  * @param s
  * @param job
  */
-void jobs_finish( state_t * s, job_t * job )
+void jobs_finish( state_t * s, job_t * job, int * save )
 {
+
   jobs_t * j;
 
   if ( !( j = s->job_mngr ) )
     return;
 
-  // pre: state->processed contains the column for divider_chunk
-  // Finding the chunk job was working on
-  int k = 0;
-  while ( j->processed[k].n != job->filtered_chunk )
+  if ( *save == 1 ) 
   {
-    k++;
-  }
+    *save = 0;
 
-  // Updating, loading new if finished
-  if ( ++j->processed[k].done == j->processed[k].all )
-  {
-    // Finished filtering a chunk
-    //save_finished_chunk(j->processed[k].n);
+    int save_k = 0;
+    while (j->processed[save_k].n != job->filtered_chunk)
+    {
+      save_k++;
+    }
+    printf("Saved %d\n", j->processed[save_k].n);
+
     j->working_on--;
 
     // If all of the previous chunks are finished
-    if ( j->finished_until+1 == j->processed[k].n )
+    if ( j->finished_until+1 == j->processed[save_k].n )
     {
       j->finished_until++;
     }
@@ -282,18 +309,41 @@ void jobs_finish( state_t * s, job_t * job )
       }
       return;
     }
+
     else
     {
       // If there is a new chunk to be loaded to the place of the finished one
       if ( j->processed_until < j->aim )
       {
         j->working_on++;
-        //load_new_chunk(++j->processed_until);
-        j->processed[k].n = j->processed_until;
-        j->processed[k].all = j->processed_until-1;
-        j->processed[k].working = j->processed[k].done = 0;
+        ++j->processed_until;
+        j->processed[save_k].n = j->processed_until;
+        j->processed[save_k].all = j->processed_until-1;
+        j->processed[save_k].working = j->processed[save_k].done = 0;
       }
     }
+
+    *save = 0;
+    return;
+  } 
+
+
+  // pre: state->processed contains the column for divider_chunk
+  // Finding the chunk job was working on
+  int k = 0;
+  while ( j->processed[k].n != job->filtered_chunk )
+  {
+    k++;
+  }
+
+  // Updating, loading new if finished
+  if ( ++j->processed[k].done == j->processed[k].all )
+  {
+    // Finished filtering a chunk
+    // Save_finished_chunk(j->processed[k].n);
+    *save = 1;
+    // Information which chunk to store is in job->filtered_chunk. Do not change it!!
+    // Code from here moved to the *save == 1 part
   }
 }
 

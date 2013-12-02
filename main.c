@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <pthread.h>
 #include "state.h"
 
 /**
@@ -50,7 +51,7 @@ void print_options( )
  * @param argc
  * @param argv
  */
-void read_options( state_t * s, int argc, char ** argv )
+void read_options( struct state * s, int argc, char ** argv )
 {
   int c, idx;
 
@@ -120,7 +121,7 @@ void read_options( state_t * s, int argc, char ** argv )
  * Checks if the arguments are valid
  * @param state
  */
-void check_options( state_t * s )
+void check_options( struct state * s )
 {
   if ( s->thread_count < 1 )
   {
@@ -144,7 +145,7 @@ void check_options( state_t * s )
  */
 int main( int argc, char ** argv )
 {
-  state_t state;
+  struct state state;
 
   memset( &state, 0, sizeof( state ) );
 

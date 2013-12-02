@@ -22,7 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ******************************************************************************/
 
-#define _GNU_SOURCE
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,19 +32,17 @@ THE SOFTWARE.
 #include "chunk.h"
 #include "state.h"
 
-void chunks_create( state_t * s )
+void chunks_create( struct state * s )
 {
-  chunks_t * c;
+  struct chunks * c;
   uint8_t zero = 0;
-  size_t primes_size;
-  size_t chunks_size;
 
   if ( !( c = s->chunk_mngr) )
   {
     return;
   }
 
-  // Prepares the output file for the primes
+  /* Prepares the output file for the primes */
   c->primes_capacity = 1;
   c->primes_count = 0;
   c->primes_size = c->primes_capacity * sizeof( uint64_t );
@@ -59,22 +56,23 @@ void chunks_create( state_t * s )
   write( c->primes_fd, &zero, 1 );
   lseek( c->primes_fd, 0, SEEK_SET );
 
-  // Create the index which will store the address of the
-  // first prime in the output array
+  /* Create the index which will store the address of the
+   * first prime in the output array
+   */
   c->primes_index = (uint64_t*)malloc( sizeof(uint64_t) * s->chunk_count );
   if ( !c->primes_index )
   {
     state_error( s, "Cannot create index" );
   }
 
-  // mmap the output file
+  /* mmap the output file */
   if ( ( c->primes_data = mmap( 0, c->primes_size, PROT_READ | PROT_WRITE,
                                 MAP_SHARED, c->primes_fd, 0 ) ) == MAP_FAILED )
   {
     state_error( s, "Cannot mmap file '%s'", s->primes_file );
   }
 
-  // Open the chunk cache
+  /* Open the chunk cache */
   c->sieve_chunks = s->chunk_count;
   c->sieve_size = c->sieve_chunks * s->chunk_size;
   if ( ( c->sieve_fd = open( s->sieve_file, O_CREAT |
@@ -87,7 +85,7 @@ void chunks_create( state_t * s )
   write( c->sieve_fd, &zero, 1 );
   lseek( c->sieve_fd, 0, SEEK_SET );
 
-  // mmap the chunk cache
+  /* mmap the chunk cache */
   if ( ( c->sieve_data = mmap( 0, c->sieve_size, PROT_READ | PROT_WRITE,
                                MAP_SHARED, c->sieve_fd, 0 ) ) == MAP_FAILED )
   {
@@ -95,9 +93,9 @@ void chunks_create( state_t * s )
   }
 }
 
-void chunks_destroy( state_t * s )
+void chunks_destroy( struct state * s )
 {
-  chunks_t * c;
+  struct chunks * c;
 
   if ( !( c = s->chunk_mngr) )
     return;
@@ -133,15 +131,15 @@ void chunks_destroy( state_t * s )
   }
 }
 
-void chunks_write_prime( state_t * s, uint64_t prime )
+void chunks_write_prime( struct state * s, uint64_t prime )
 {
-  chunks_t * c;
+  struct chunks * c;
   uint64_t * addr;
 
   if ( !( c = s->chunk_mngr ) )
     return;
 
-  // Double the size of the output file
+  /* Double the size of the output file */
   if ( c->primes_count >= c->primes_capacity )
   {
     if ( ftruncate( c->primes_fd, c->primes_size << 1ull ) < 0 )
@@ -163,12 +161,14 @@ void chunks_write_prime( state_t * s, uint64_t prime )
   c->primes_data[ c->primes_count++ ] = prime;
 }
 
-uint64_t chunks_get_prime( state_t * s, uint64_t idx )
+uint64_t chunks_get_prime( struct state * s, uint64_t idx )
 {
-  chunks_t * c;
+  struct chunks * c;
 
   if ( !( c = s->chunk_mngr ) )
+  {
     return 0ll;
+  }
 
   return 2ull;
 }

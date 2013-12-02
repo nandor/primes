@@ -36,21 +36,21 @@ THE SOFTWARE.
  * Creates a new state, initialising modules
  * @param state
  */
-void state_create( state_t * state )
+void state_create( struct state * state )
 {
   // Initialise the chunk manager
-  assert( state->chunk_mngr = (chunks_t*)malloc( sizeof( chunks_t ) ) );
-  memset( state->chunk_mngr, 0, sizeof( jobs_t ) );
+  assert( state->chunk_mngr = (struct chunks*)malloc( sizeof( struct chunks ) ) );
+  memset( state->chunk_mngr, 0, sizeof( struct chunks ) );
   chunks_create( state );
 
   // Initialise the job manager
-  assert( state->job_mngr = (jobs_t*)malloc( sizeof( jobs_t ) ) );
-  memset( state->job_mngr, 0, sizeof( jobs_t ) );
+  assert( state->job_mngr = (struct jobs*)malloc( sizeof( struct jobs ) ) );
+  memset( state->job_mngr, 0, sizeof( struct jobs ) );
   jobs_create( state );
 
   // Initialise the thread manager
-  assert( state->thread_mngr = (threads_t*)malloc( sizeof( threads_t ) ) );
-  memset( state->thread_mngr, 0, sizeof( threads_t ) );
+  assert( state->thread_mngr = (struct threads*)malloc( sizeof( struct threads ) ) );
+  memset( state->thread_mngr, 0, sizeof( struct threads ) );
   threads_create( state );
 }
 
@@ -59,7 +59,7 @@ void state_create( state_t * state )
  * @param state
  * @param fmt
  */
-void state_error( state_t * state, const char * fmt, ... )
+void state_error( struct state * state, const char * fmt, ... )
 {
   int size = 100, n;
   char * tmp;
@@ -92,7 +92,7 @@ void state_error( state_t * state, const char * fmt, ... )
 /**
  * Runs the sieve
  */
-void state_run( state_t * state )
+void state_run( struct state * state )
 {
   threads_wait( state );
 }
@@ -101,7 +101,7 @@ void state_run( state_t * state )
  * Frees memory allocated by the state
  * @param state
  */
-void state_destroy( state_t * state )
+void state_destroy( struct state * state )
 {
   if ( state )
   {

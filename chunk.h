@@ -27,44 +27,44 @@ THE SOFTWARE.
 
 #include <stdint.h>
 
-typedef struct _state_t state_t;
+struct state;
 
-struct _chunks_t
+struct chunks
 {
-  /// File descriptor of the output
+  /* File descriptor of the output */
   int primes_fd;
 
-  /// mmapped primes_fd
+  /* mmapped primes_fd */
   uint64_t * primes_data;
 
-  /// Number of primes written
+  /* Number of primes written */
   uint64_t primes_count;
 
-  /// Available storage for primes
+  /* Available storage for primes */
   uint64_t primes_capacity;
 
-  /// Size of the primes file in bytes
+  /* Size of the primes file in bytes */
   size_t primes_size;
 
-  // Maps the index of the first prime in each chunk
+  /* Maps the index of the first prime in each chunk */
   uint64_t * primes_index;
 
-  /// File descriptor of the sieve
+  /* File descriptor of the sieve */
   int sieve_fd;
 
-  // Number of chunks stored
+  /* Number of chunks stored */
   uint64_t sieve_chunks;
 
-  /// Size of the sieve cache
+  /* Size of the sieve cache */
   size_t sieve_size;
 
-  /// Individual bits accessed by the sieve
+  /* Individual bits accessed by the sieve */
   uint8_t * sieve_data;
 };
 
-void     chunks_create( state_t * );
-void     chunks_destroy( state_t * );
-void     chunks_write_prime( state_t *, uint64_t );
-uint64_t chunks_get_prime( state_t *, uint64_t );
+void     chunks_create( struct state * );
+void     chunks_destroy( struct state * );
+void     chunks_write_prime( struct state *, uint64_t );
+uint64_t chunks_get_prime( struct state *, uint64_t );
 
 #endif

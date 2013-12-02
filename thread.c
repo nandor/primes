@@ -36,12 +36,12 @@ THE SOFTWARE.
  */
 void * thread_func( void * sp )
 {
-  job_t job;
-  state_t * s;
-  threads_t * t;
+  struct job job;
+  struct state * s;
+  struct threads * t;
   int has_next, must_save;
 
-  if ( !( s = (state_t*)sp ) || !( t = s->thread_mngr ) )
+  if ( !( s = (struct state*)sp ) || !( t = s->thread_mngr ) )
     pthread_exit( NULL );
 
   has_next = 0, must_save = 0;
@@ -87,11 +87,11 @@ void * thread_func( void * sp )
  * Creates new threads
  * @param s
  */
-void threads_create( state_t * s )
+void threads_create( struct state * s )
 {
   int i;
   size_t sz;
-  threads_t * t;
+  struct threads * t;
   pthread_attr_t attr;
 
   if ( !( t = s->thread_mngr ) )
@@ -140,9 +140,9 @@ void threads_create( state_t * s )
  * Cleanup
  * @param s
  */
-void threads_destroy( state_t * s )
+void threads_destroy( struct state * s )
 {
-  threads_t * t;
+  struct threads * t;
   int i;
 
   if ( !( t = s->thread_mngr ) )
@@ -178,9 +178,9 @@ void threads_destroy( state_t * s )
  * all threads finished their jobs
  * @param s
  */
-void threads_wait( state_t * s )
+void threads_wait( struct state * s )
 {
-  threads_t * t;
+  struct threads * t;
 
   if ( !( t = s->thread_mngr ) || !t->running )
     return;
@@ -197,9 +197,9 @@ void threads_wait( state_t * s )
  * Wakes up the main thread when the threads finish
  * @param s
  */
-void threads_finish( state_t * s )
+void threads_finish( struct state * s )
 {
-  threads_t * t;
+  struct threads * t;
 
   if ( !( t = s->thread_mngr ) || !t->running )
     return;

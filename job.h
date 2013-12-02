@@ -25,19 +25,19 @@ THE SOFTWARE.
 #ifndef JOB_H
 #define JOB_H
 
-typedef struct _state_t state_t;
-typedef struct _column_t column_t;
+struct state;
+struct column;
 
-typedef struct
+struct job
 {
   int divider_chunk;
   int filtered_chunk;
-} job_t;
+};
 
 
-struct _jobs_t
+struct jobs
 {
-  column_t * processed;
+  struct column * processed;
   uint8_t * chunk_saved;
   int processed_until;
   int finished_until;
@@ -47,11 +47,11 @@ struct _jobs_t
   int last_saved;
 };
 
-void jobs_create( state_t * );
-void jobs_destroy( state_t * );
-void jobs_run( state_t *, job_t * );
-int  jobs_next( state_t *, job_t * );
-void jobs_finish( state_t *, job_t *, int * save );
-void cross_out (state_t *, uint64_t);
+void jobs_create( struct state * );
+void jobs_destroy( struct state * );
+void jobs_run( struct state *, struct job * );
+int  jobs_next( struct state *, struct job * );
+void jobs_finish( struct state *, struct job *, int * save );
+void jobs_save_finished (struct state * s, int n);
 
 #endif

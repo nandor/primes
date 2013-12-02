@@ -33,27 +33,29 @@ THE SOFTWARE.
 #include "state.h"
 #include "thread.h"
 
-typedef struct _column_t
+struct column
 {
   int n;
   int all;
   int working;
   int done;
-} column_t;
+};
+
+void cross_out (struct state *, uint64_t);
 
 /**
  * Run the first job
  */
-void startup_job( state_t * s )
+void startup_job( struct state * s )
 {
   uint8_t * bitset;
-  uint64_t limit, step, i, j;
-  chunks_t * c;
+  uint64_t limit, i, j;
+  struct chunks * c;
 
   if ( !( c = s->chunk_mngr ) )
       return;
 
-  // Allocate a separate bitset so we don't overwrite stuff
+  /* Allocate a separate bitset so we don't overwrite stuff */
   assert( bitset = (uint8_t*)malloc( s->chunk_size ) );
   memset( bitset, 0, s->chunk_size );
 
@@ -86,29 +88,28 @@ void startup_job( state_t * s )
 /**
  * Initialises the job manager
  */
-void jobs_create( state_t * s )
+void jobs_create( struct state * s )
 {
-  jobs_t * j;
-  job_t init;
+  struct jobs * j;
   size_t sz;
   int i;
 
   if ( !( j = s->job_mngr ) )
     return;
 
-  // Run the first job, chunk 1
+  /* Run the first job, chunk 1 */
   startup_job( s );
 
-  // Allocate storage for the queue
-  sz = sizeof( column_t ) * 100;
-  assert( j->processed = (column_t*)malloc( sz ) );
+  /* Allocate storage for the queue */
+  sz = sizeof( struct column ) * 100;
+  assert( j->processed = (struct column*)malloc( sz ) );
   memset( j->processed, 0, sz );
   for ( i = 0; i < 100; i++)
   {
     j->processed[ i ].n = -1;
   }
 
-  // Setup
+  /* Setup */
   j->finished = 0;
   j->processed_until = 1;
   j->finished_until = 1;
@@ -120,9 +121,9 @@ void jobs_create( state_t * s )
 /**
  * Destroys the job manager
  */
-void jobs_destroy( state_t * s )
+void jobs_destroy( struct state * s )
 {
-  jobs_t * j;
+  struct jobs * j;
 
   if ( !s || !( j = s->job_mngr ) )
     return;
@@ -137,15 +138,15 @@ void jobs_destroy( state_t * s )
 /**
  * Executes a job
  */
-void jobs_run( state_t * s, job_t * job )
+void jobs_run( struct state * s, struct job * job )
 {
-  jobs_t * j;
-  chunks_t * c;
+  struct jobs * j;
+  struct chunks * c;
 
   if ( !( j = s->job_mngr ) || !( c = s->chunk_mngr ) )
     return;
 
-  //sleep( 1 );
+  /* sleep( 1 ); */
   int divider_chunk = job->divider_chunk;
   int filtered_chunk = job->filtered_chunk;
 
@@ -170,18 +171,18 @@ void jobs_run( state_t * s, job_t * job )
 }
 
 
-void cross_out (state_t * s, uint64_t n) {
+void cross_out (struct state * s, uint64_t n) {
   uint64_t byte_number = n >> 3ull;
   uint64_t mod = n & 7ull;
   s->chunk_mngr->sieve_data[byte_number] =
     s->chunk_mngr->sieve_data[byte_number] & (~(1ull << mod));
 }
 
-void jobs_save_finished (state_t * s, int n)
+void jobs_save_finished (struct state * s, int n)
 {
   n--;
 
-  //for test
+  /* for test */
   int valami=100;
 
   s->chunk_mngr->primes_index[n]=s->chunk_mngr->primes_count+1;
@@ -189,7 +190,7 @@ void jobs_save_finished (state_t * s, int n)
   uint64_t i;
   for (i = n * s->chunk_size; i < (n+1) * s->chunk_size; i++)
   {
-    if (s->chunk_mngr->sieve_data[i >> 3ull] & (1 << (i & 7) ) != 0)
+    if ( ( s->chunk_mngr->sieve_data[i >> 3ull] & (1 << (i & 7) ) ) != 0)
     {
       chunks_write_prime( s, i );
       if (--valami>0) printf("%u ",s->chunk_mngr->sieve_data[i >> 3ull]);
@@ -202,9 +203,9 @@ void jobs_save_finished (state_t * s, int n)
  * Finds the next job
  * @return Returns 1 if a job was found
  */
-int jobs_next( state_t * s, job_t * job )
+int jobs_next( struct state * s, struct job * job )
 {
-  jobs_t * j;
+  struct jobs * j;
 
   if ( !( j = s->job_mngr ) )
     return 0;
@@ -219,12 +220,12 @@ int jobs_next( state_t * s, job_t * job )
   if ( j->finished )
     return 0;
 
-  // Finding next available job
-  job_t next;
+  /* Finding next available job */
+  struct job next;
   int next_index;
   next.filtered_chunk = INT_MAX;
 
-  // Looking for the smallest chunk we can work on
+  /* Looking for the smallest chunk we can work on */
   int k = 0;
   while ( j->processed[k].n != -1 )
   {
@@ -238,10 +239,10 @@ int jobs_next( state_t * s, job_t * job )
     k++;
   }
 
-  // If there is no available job with current chunks
+  /* If there is no available job with current chunks */
   if ( next.filtered_chunk == INT_MAX )
   {
-    // If we can work on a new chunk
+    /* If we can work on a new chunk */
     if ( j->processed_until < j->aim )
     {
       j->working_on++;
@@ -254,7 +255,7 @@ int jobs_next( state_t * s, job_t * job )
     }
     else
     {
-      // There is no work to be done
+      /* There is no work to be done */
       return 0;
     }
   }
@@ -271,10 +272,9 @@ int jobs_next( state_t * s, job_t * job )
  * @param s
  * @param job
  */
-void jobs_finish( state_t * s, job_t * job, int * save )
+void jobs_finish( struct state * s, struct job * job, int * save )
 {
-
-  jobs_t * j;
+  struct jobs * j;
 
   if ( !( j = s->job_mngr ) )
     return;
@@ -292,13 +292,13 @@ void jobs_finish( state_t * s, job_t * job, int * save )
 
     j->working_on--;
 
-    // If all of the previous chunks are finished
+    /* If all of the previous chunks are finished */
     if ( j->finished_until+1 == j->processed[save_k].n )
     {
       j->finished_until++;
     }
 
-    // If this is the last chunk needed
+    /* If this is the last chunk needed */
     if ( j->aim == j->finished_until )
     {
       if ( j->working_on == 0)
@@ -311,7 +311,7 @@ void jobs_finish( state_t * s, job_t * job, int * save )
 
     else
     {
-      // If there is a new chunk to be loaded to the place of the finished one
+      /* If there is a new chunk to be loaded to the place of the finished one */
       if ( j->processed_until < j->aim )
       {
         j->working_on++;
@@ -327,22 +327,25 @@ void jobs_finish( state_t * s, job_t * job, int * save )
   }
 
 
-  // pre: state->processed contains the column for divider_chunk
-  // Finding the chunk job was working on
+  /* pre: state->processed contains the column for divider_chunk
+   * Finding the chunk job was working on
+   */
   int k = 0;
   while ( j->processed[k].n != job->filtered_chunk )
   {
     k++;
   }
 
-  // Updating, loading new if finished
+  /* Updating, loading new if finished */
   if ( ++j->processed[k].done == j->processed[k].all )
   {
-    // Finished filtering a chunk
-    // Save_finished_chunk(j->processed[k].n);
+    /* Finished filtering a chunk
+     * Save_finished_chunk(j->processed[k].n);
+     */
     *save = 1;
-    // Information which chunk to store is in job->filtered_chunk. Do not change it!!
-    // Code from here moved to the *save == 1 part
+    /* Information which chunk to store is in job->filtered_chunk. Do not change it!!
+     * Code from here moved to the *save == 1 part
+     */
   }
 }
 

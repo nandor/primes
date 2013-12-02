@@ -27,9 +27,9 @@ THE SOFTWARE.
 
 #include <pthread.h>
 
-typedef struct _state_t state_t;
+struct state;
 
-typedef struct _threads_t
+struct threads
 {
   pthread_t * threads;
   pthread_mutex_t queue_lock;
@@ -39,11 +39,11 @@ typedef struct _threads_t
 
   volatile char running;
   volatile char finished;
-} threads_t;
+};
 
-void threads_create( state_t * );
-void threads_destroy( state_t * );
-void threads_wait( state_t * );
-void threads_finish( state_t * );
+void threads_create( struct state * );
+void threads_destroy( struct state * );
+void threads_wait( struct state * );
+void threads_finish( struct state * );
 
 #endif

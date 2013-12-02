@@ -29,47 +29,46 @@ THE SOFTWARE.
 #include <setjmp.h>
 #include <stdint.h>
 
-typedef struct _jobs_t    jobs_t;
-typedef struct _threads_t threads_t;
-typedef struct _chunks_t  chunks_t;
-typedef struct _state_t   state_t;
+struct jobs;
+struct threads;
+struct chunks;
 
-struct _state_t
+struct state
 {
-  /// Number of threads
+  /* Number of threads */
   int thread_count;
 
-  /// Number of chunks
+  /* Number of chunks */
   int chunk_count;
 
-  /// Size of a chunk
+  /* Size of a chunk */
   uint64_t chunk_size;
 
-  /// Sieve file name
+  /* Sieve file name */
   char * sieve_file;
 
-  /// Output file name
+  /* Output file name */
   char * primes_file;
 
-  /// Job manager
-  jobs_t * job_mngr;
+  /* Job manager */
+  struct jobs * job_mngr;
 
-  /// Thread manager
-  threads_t * thread_mngr;
+  /* Thread manager */
+  struct threads * thread_mngr;
 
-  /// Chunk manager
-  chunks_t * chunk_mngr;
+  /* Chunk manager */
+  struct chunks * chunk_mngr;
 
-  /// Error handler
+  /* Error handler */
   jmp_buf err_jump;
 
-  /// Error message
+  /* Error message */
   char * err_msg;
 };
 
-void state_create( state_t * state );
-void state_error( state_t * state, const char * fmt, ... );
-void state_run( state_t * state );
-void state_destroy( state_t * state );
+void state_create( struct state * state );
+void state_error( struct state * state, const char * fmt, ... );
+void state_run( struct state * state );
+void state_destroy( struct state * state );
 
 #endif

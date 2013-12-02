@@ -42,13 +42,13 @@ typedef struct _state_t
   int chunk_count;
 
   /// Size of a chunk
-  int64_t chunk_size;
-
-  /// Max cache usage
-  int64_t cache_limit;
+  uint64_t chunk_size;
 
   /// Sieve file name
-  char * cache_file;
+  char * sieve_file;
+
+  /// Output file name
+  char * primes_file;
 
   /// Job manager
   jobs_t * job_mngr;

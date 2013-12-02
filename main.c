@@ -34,13 +34,13 @@ THE SOFTWARE.
  */
 void print_options( )
 {
-  fputs( "primes - multithreaded prime sieve", stderr );
-  fputs( "Usage: primes [args]\n", stderr );
-  fputs( "  --threads=<count>      Sets the number of threads\n", stderr );
-  fputs( "  --chunks=<count>       Sets the number of chunks\n", stderr );
-  fputs( "  --cache=<limit>)       Sets max cache usage\n", stderr );
-  fputs( "  --size=<size>          Sets the size of a chunk\n", stderr );
-  fputs( "  --file=<path>)         Sets the output file\n", stderr );
+  fputs( "primes - multithreaded prime sieve                   \n", stderr );
+  fputs( "Usage: primes [args]                                 \n", stderr );
+  fputs( "  --threads=<count>      Sets the number of threads  \n", stderr );
+  fputs( "  --chunks=<count>       Sets the number of chunks   \n", stderr );
+  fputs( "  --size=<size>          Sets the size of a chunk    \n", stderr );
+  fputs( "  --sieve_file=<path>)   Chooses a file for the cache\n", stderr );
+  fputs( "  --primes_file=<path>)  Chooses an output file      \n", stderr );
 }
 
 
@@ -57,17 +57,17 @@ void read_options( state_t * s, int argc, char ** argv )
   s->thread_count = 2;
   s->chunk_count = 10;
   s->chunk_size = 1ll << 20;
-  s->cache_limit = 2048ll << 20;
-  s->cache_file = strdup( "cache.bin" );
+  s->sieve_file = strdup( "sieve.bin" );
+  s->primes_file = strdup( "primes.bin" );
 
   static struct option desc[ ] =
   {
-    { "threads", required_argument, 0, 't' },
-    { "chunks",  required_argument, 0, 'c' },
-    { "size",    required_argument, 0, 's' },
-    { "cache",   required_argument, 0, 'l' },
-    { "file",    required_argument, 0, 'f' },
-    { "help",    no_argument,       0, 'h' }
+    { "threads",     required_argument, 0, 't' },
+    { "chunks",      required_argument, 0, 'c' },
+    { "size",        required_argument, 0, 's' },
+    { "sieve_file",  required_argument, 0, 'f' },
+    { "primes_file", required_argument, 0, 'o' },
+    { "help",        no_argument,       0, 'h' }
   };
 
   while ( ( c = getopt_long( argc, argv, "t:c:s:f:h", desc, &idx ) ) != -1 )
@@ -89,17 +89,20 @@ void read_options( state_t * s, int argc, char ** argv )
         s->chunk_size = (int64_t)atoi( optarg ) << 20;
         break;
       }
-      case 'l':
-      {
-        s->cache_limit = (int64_t)atoi( optarg ) << 20;
-        break;
-      }
       case 'f':
       {
-        if ( s->cache_file )
-          free( s->cache_file );
+        if ( s->sieve_file )
+          free( s->sieve_file );
 
-        s->cache_file = strdup( optarg );
+        s->sieve_file = strdup( optarg );
+        break;
+      }
+      case 'o':
+      {
+        if ( s->primes_file )
+          free( s->primes_file );
+
+        s->primes_file = strdup( optarg );
         break;
       }
       case 'h':
@@ -120,16 +123,19 @@ void read_options( state_t * s, int argc, char ** argv )
 void check_options( state_t * s )
 {
   if ( s->thread_count < 1 )
+  {
     state_error( s, "Invalid thread count: %d", s->thread_count );
+  }
 
   if ( s->chunk_count < 1 )
+  {
     state_error( s, "Invalid chunk count: %d", s->chunk_count );
+  }
 
   if ( s->chunk_size < ( 1 << 20 ) )
+  {
     state_error( s, "Invalid chunk size: %lld", s->chunk_size );
-
-  if ( s->cache_limit < s->chunk_size * 5ll )
-    state_error( s, "Invalid cache limit: %lld", s->cache_limit );
+  }
 }
 
 

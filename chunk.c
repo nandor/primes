@@ -35,41 +35,63 @@ THE SOFTWARE.
 void chunks_create( state_t * s )
 {
   chunks_t * c;
-  void * data;
-  struct stat st;
+  uint8_t zero = 0;
+  size_t primes_size;
+  size_t chunks_size;
 
   if ( !( c = s->chunk_mngr) )
+  {
     return;
-
-  c->first_prime_index = (uint64_t*)malloc( sizeof(uint64_t) * s->chunk_count );
-  if ( !c->first_prime_index )
-    state_error( s, "Cannot create chunk index map" );
-
-  if ( ( c->fd = open( s->cache_file, O_CREAT | O_RDWR, 0666 ) ) < 0 )
-    state_error( s, "Cannot create cache file '%s'", s->cache_file );
-
-  if ( fstat( c->fd, &st ) < 0 )
-    state_error( s, "Cannot retrieve cache file size" );
-
-  c->dataSize = s->chunk_count * s->chunk_size;
-  printf("%u\n",c->dataSize);
-  if ( st.st_size < c->dataSize )
-  {
-    uint8_t end = 0;
-
-    lseek( c->fd, s->chunk_count * s->chunk_size - 1, SEEK_SET );
-    write( c->fd, &end, 1 );
-    lseek( c->fd, 0, SEEK_SET );
   }
 
-  data = mmap( 0, c->dataSize, PROT_READ | PROT_WRITE, MAP_SHARED, c->fd, 0 );
-  if ( data == MAP_FAILED )
+  // Prepares the output file for the primes
+  c->primes_capacity = 1;
+  c->primes_count = 0;
+  c->primes_size = c->primes_capacity * sizeof( uint64_t );
+  if ( ( c->primes_fd = open( s->primes_file, O_CREAT |
+                              O_RDWR | O_TRUNC, 0666 ) ) < 0 )
   {
-    state_error( s, "Cannot mmap file" );
+    state_error( s, "Cannot open file '%s'", s->primes_file );
   }
 
-  c->data_sieve = (uint8_t*)data;
-  c->data_primes = (uint64_t*)data;
+  lseek( c->primes_fd, c->primes_size - 1, SEEK_SET );
+  write( c->primes_fd, &zero, 1 );
+  lseek( c->primes_fd, 0, SEEK_SET );
+
+  // Create the index which will store the address of the
+  // first prime in the output array
+  c->primes_index = (uint64_t*)malloc( sizeof(uint64_t) * s->chunk_count );
+  if ( !c->primes_index )
+  {
+    state_error( s, "Cannot create index" );
+  }
+
+  // mmap the output file
+  if ( ( c->primes_data = mmap( 0, c->primes_size, PROT_READ | PROT_WRITE,
+                                MAP_PRIVATE, c->primes_fd, 0 ) ) == MAP_FAILED )
+  {
+    state_error( s, "Cannot mmap file '%s'", s->primes_file );
+  }
+
+  // Open the chunk cache
+  c->sieve_chunks = s->chunk_count;
+  c->sieve_size = c->sieve_chunks * s->chunk_size;
+  if ( ( c->sieve_fd = open( s->sieve_file, O_CREAT |
+                             O_RDWR | O_TRUNC, 0666 ) ) < 0 )
+  {
+    state_error( s, "Cannot open chunk cache '%s'", s->sieve_file );
+  }
+
+  lseek( c->sieve_fd, c->sieve_size - 1, SEEK_SET );
+  write( c->sieve_fd, &zero, 1 );
+  lseek( c->sieve_fd, 0, SEEK_SET );
+
+  // mmap the chunk cache
+  if ( ( c->sieve_data = mmap( 0, c->sieve_size, PROT_READ | PROT_WRITE,
+                               MAP_PRIVATE, c->sieve_fd, 0 ) ) == MAP_FAILED )
+  {
+    state_error( s, "Cannot mmap file '%s'", s->sieve_file );
+  }
 }
 
 void chunks_destroy( state_t * s )
@@ -79,21 +101,73 @@ void chunks_destroy( state_t * s )
   if ( !( c = s->chunk_mngr) )
     return;
 
-  if ( c->data_sieve )
+  if ( c->primes_index )
   {
-    munmap( c->data_sieve, c->dataSize );
-    c->data_sieve = NULL;
-    c->data_primes = NULL;
+    free( c->primes_index );
+    c->primes_index = NULL;
   }
 
-  if ( c->first_prime_index )
+  if ( c->primes_data )
   {
-    free( c->first_prime_index );
-    c->first_prime_index = NULL;
+    munmap( c->primes_data, c->primes_size );
+    c->primes_data = NULL;
   }
 
-  if ( c->fd > 0) {
-    close( c-> fd );
-    c->fd = -1;
+  if ( c->primes_fd > 0)
+  {
+    close( c->primes_fd );
+    c->primes_fd = -1;
   }
+
+  if ( c->sieve_data )
+  {
+    munmap( c->sieve_data, c->sieve_size );
+    c->sieve_data = NULL;
+  }
+
+  if ( c->sieve_fd > 0)
+  {
+    close( c->sieve_fd );
+    c->sieve_fd = -1;
+  }
+}
+
+void chunks_write_prime( state_t * s, uint64_t prime )
+{
+  chunks_t * c;
+  uint64_t * addr;
+
+  if ( !( c = s->chunk_mngr ) )
+    return;
+
+  // Double the size of the output file
+  if ( c->primes_count >= c->primes_capacity )
+  {
+    if ( ftruncate( c->primes_fd, c->primes_size << 1ull ) < 0 )
+    {
+      state_error( s, "Cannot resize output size" );
+    }
+
+    if ( ( addr = mremap( c->primes_data, c->primes_size,
+                          c->primes_size << 1, 0 ) ) == MAP_FAILED )
+    {
+      state_error( s, "Cannot remap output file '%s'", s->primes_file );
+    }
+
+    c->primes_size <<= 1;
+    c->primes_capacity <<= 1;
+    c->primes_data = addr;
+  }
+
+  c->primes_data[ c->primes_count++ ] = prime;
+}
+
+uint64_t chunks_get_prime( state_t * s, uint64_t idx )
+{
+  chunks_t * c;
+
+  if ( !( c = s->chunk_mngr ) )
+    return;
+
+  return 2ull;
 }

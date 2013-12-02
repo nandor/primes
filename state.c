@@ -126,10 +126,16 @@ void state_destroy( state_t * state )
       state->thread_mngr = NULL;
     }
 
-    if ( state->cache_file )
+    if ( state->sieve_file )
     {
-      free( state->cache_file );
-      state->cache_file = NULL;
+      free( state->sieve_file );
+      state->sieve_file = NULL;
+    }
+
+    if ( state->primes_file )
+    {
+      free( state->primes_file );
+      state->primes_file = NULL;
     }
   }
 }

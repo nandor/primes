@@ -31,29 +31,40 @@ typedef struct _state_t state_t;
 
 typedef struct _chunks_t
 {
-  /// File descriptor of the cache file
-  int fd;
+  /// File descriptor of the output
+  int primes_fd;
 
-  /// Size of the cache file
-  uint64_t dataSize;
+  /// mmapped primes_fd
+  uint64_t * primes_data;
 
-  /// Number of primes already computed
-  uint64_t prime_count;
+  /// Number of primes written
+  uint64_t primes_count;
+
+  /// Available storage for primes
+  uint64_t primes_capacity;
+
+  /// Size of the primes file in bytes
+  size_t primes_size;
 
   // Maps the index of the first prime in each chunk
-  uint64_t * first_prime_index;
+  uint64_t * primes_index;
 
-  // Number of chunks processed;
-  uint64_t chunks_count; 
+  /// File descriptor of the sieve
+  int sieve_fd;
 
-  /// Saves primes to the beginning of the file
-  uint64_t * data_primes;
+  // Number of chunks stored
+  uint64_t sieve_chunks;
+
+  /// Size of the sieve cache
+  size_t sieve_size;
 
   /// Individual bits accessed by the sieve
-  uint8_t * data_sieve;
+  uint8_t * sieve_data;
 } chunks_t;
 
-void chunks_create( state_t * chunk );
-void chunks_destroy( state_t * chunk );
+void     chunks_create( state_t * );
+void     chunks_destroy( state_t * );
+void     chunks_write_prime( state_t *, uint64_t );
+uint64_t chunks_get_prime( state_t *, uint64_t );
 
 #endif

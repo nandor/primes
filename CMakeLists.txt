@@ -16,7 +16,7 @@ SET( HEADERS chunk.h
 
 SET( LIBS pthread )
 
-SET( CMAKE_C_FLAGS -g )
+SET( CMAKE_C_FLAGS "-g -m64" )
 
 ADD_EXECUTABLE( primes ${SOURCES} ${HEADERS} )
 TARGET_LINK_LIBRARIES( primes ${LIBS} )

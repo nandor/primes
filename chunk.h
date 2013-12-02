@@ -29,7 +29,7 @@ THE SOFTWARE.
 
 typedef struct _state_t state_t;
 
-typedef struct _chunks_t
+struct _chunks_t
 {
   /// File descriptor of the output
   int primes_fd;
@@ -60,7 +60,7 @@ typedef struct _chunks_t
 
   /// Individual bits accessed by the sieve
   uint8_t * sieve_data;
-} chunks_t;
+};
 
 void     chunks_create( state_t * );
 void     chunks_destroy( state_t * );

@@ -32,8 +32,9 @@ THE SOFTWARE.
 typedef struct _jobs_t    jobs_t;
 typedef struct _threads_t threads_t;
 typedef struct _chunks_t  chunks_t;
+typedef struct _state_t   state_t;
 
-typedef struct _state_t
+struct _state_t
 {
   /// Number of threads
   int thread_count;
@@ -64,7 +65,7 @@ typedef struct _state_t
 
   /// Error message
   char * err_msg;
-} state_t;
+};
 
 void state_create( state_t * state );
 void state_error( state_t * state, const char * fmt, ... );

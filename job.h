@@ -35,7 +35,7 @@ typedef struct
 } job_t;
 
 
-typedef struct _jobs_t
+struct _jobs_t
 {
   column_t * processed;
   uint8_t * chunk_saved;
@@ -45,7 +45,7 @@ typedef struct _jobs_t
   int working_on;
   int finished;
   int last_saved;
-} jobs_t;
+};
 
 void jobs_create( state_t * );
 void jobs_destroy( state_t * );

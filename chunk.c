@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ******************************************************************************/
 
+#define _GNU_SOURCE
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -68,7 +69,7 @@ void chunks_create( state_t * s )
 
   // mmap the output file
   if ( ( c->primes_data = mmap( 0, c->primes_size, PROT_READ | PROT_WRITE,
-                                MAP_PRIVATE, c->primes_fd, 0 ) ) == MAP_FAILED )
+                                MAP_SHARED, c->primes_fd, 0 ) ) == MAP_FAILED )
   {
     state_error( s, "Cannot mmap file '%s'", s->primes_file );
   }
@@ -88,7 +89,7 @@ void chunks_create( state_t * s )
 
   // mmap the chunk cache
   if ( ( c->sieve_data = mmap( 0, c->sieve_size, PROT_READ | PROT_WRITE,
-                               MAP_PRIVATE, c->sieve_fd, 0 ) ) == MAP_FAILED )
+                               MAP_SHARED, c->sieve_fd, 0 ) ) == MAP_FAILED )
   {
     state_error( s, "Cannot mmap file '%s'", s->sieve_file );
   }
@@ -149,7 +150,7 @@ void chunks_write_prime( state_t * s, uint64_t prime )
     }
 
     if ( ( addr = mremap( c->primes_data, c->primes_size,
-                          c->primes_size << 1, 0 ) ) == MAP_FAILED )
+                          c->primes_size << 1, MREMAP_MAYMOVE ) ) == MAP_FAILED )
     {
       state_error( s, "Cannot remap output file '%s'", s->primes_file );
     }
@@ -167,7 +168,7 @@ uint64_t chunks_get_prime( state_t * s, uint64_t idx )
   chunks_t * c;
 
   if ( !( c = s->chunk_mngr ) )
-    return;
+    return 0ll;
 
   return 2ull;
 }

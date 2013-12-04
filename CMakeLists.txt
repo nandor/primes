@@ -18,7 +18,7 @@ SET( HEADERS chunk.h
 SET( LIBS pthread )
 
 ADD_DEFINITIONS( -D_GNU_SOURCE )
-SET( CMAKE_C_FLAGS "-g -m64 -std=c99 -pedantic -Wall -Werror" )
+SET( CMAKE_C_FLAGS "-g -m64 -std=c99 -pedantic -Wall -O2" )
 
 ADD_EXECUTABLE( primes ${SOURCES} ${HEADERS} )
 TARGET_LINK_LIBRARIES( primes ${LIBS} )

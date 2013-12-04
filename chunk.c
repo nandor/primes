@@ -53,7 +53,7 @@ void chunks_create( struct state * s )
   }
 
   lseek( c->primes_fd, c->primes_size - 1, SEEK_SET );
-  write( c->primes_fd, &zero, 1 );
+  (void)write( c->primes_fd, &zero, 1 );
   lseek( c->primes_fd, 0, SEEK_SET );
 
   /* Create the index which will store the address of the
@@ -82,7 +82,7 @@ void chunks_create( struct state * s )
   }
 
   lseek( c->sieve_fd, c->sieve_size - 1, SEEK_SET );
-  write( c->sieve_fd, &zero, 1 );
+  (void)write( c->sieve_fd, &zero, 1 );
   lseek( c->sieve_fd, 0, SEEK_SET );
 
   /* mmap the chunk cache */
@@ -159,6 +159,12 @@ void chunks_write_prime( struct state * s, uint64_t prime )
   }
 
   c->primes_data[ c->primes_count++ ] = prime;
+
+  /*for (uint64_t i = 0; i < s->chunk_mngr->primes_count; i++) 
+  {
+    printf("%llu ",chunks_get_prime(s,i));
+  }
+  printf("\n");*/
 }
 
 uint64_t chunks_get_prime( struct state * s, uint64_t idx )
@@ -170,5 +176,10 @@ uint64_t chunks_get_prime( struct state * s, uint64_t idx )
     return 0ll;
   }
 
-  return 2ull;
+  if ( idx >= c->primes_count )
+  {
+    state_error( s, "Invalid prime index" );
+  }
+
+  return c->primes_data[ idx ];
 }

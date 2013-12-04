@@ -55,9 +55,9 @@ void read_options( struct state * s, int argc, char ** argv )
 {
   int c, idx;
 
-  s->thread_count = 2;
+  s->thread_count = 8;
   s->chunk_count = 10;
-  s->chunk_size = 1ll << 20;
+  s->chunk_size = 1ll << 13;
   s->sieve_file = strdup( "sieve.bin" );
   s->primes_file = strdup( "primes.bin" );
 
@@ -135,7 +135,7 @@ void check_options( struct state * s )
 
   if ( s->chunk_size < ( 1 << 20 ) )
   {
-    state_error( s, "Invalid chunk size: %lld", s->chunk_size );
+    //state_error( s, "Invalid chunk size: %lld", s->chunk_size );
   }
 }
 

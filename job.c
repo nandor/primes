@@ -83,6 +83,12 @@ void startup_job( struct state * s )
   }
 
   free( bitset );
+
+  c->primes_index[1] = 0;
+  c->primes_index[2] = c->primes_count;
+
+
+  printf("finshed startup job\n");
  }
 
 /**
@@ -114,7 +120,7 @@ void jobs_create( struct state * s )
   j->processed_until = 1;
   j->finished_until = 1;
   j->working_on = 0;
-  j->aim = 7;
+  j->aim = s->chunk_count;
   j->last_saved = 0;
 }
 
@@ -150,8 +156,8 @@ void jobs_run( struct state * s, struct job * job )
   int divider_chunk = job->divider_chunk;
   int filtered_chunk = job->filtered_chunk;
 
-  uint64_t first_filtered = (filtered_chunk) * s->chunk_size;
-  uint64_t filter_until = (filtered_chunk + 1 ) * s->chunk_size;
+  uint64_t first_filtered = (filtered_chunk - 1) * s->chunk_size * 8;
+  uint64_t filter_until = (filtered_chunk) * s->chunk_size * 8;
   uint64_t act_filter;
 
   int i;
@@ -159,43 +165,56 @@ void jobs_run( struct state * s, struct job * job )
        i < c->primes_index[divider_chunk+1]; i++ )
   {
     act_filter = chunks_get_prime( s, i );
-    uint64_t cancel_n = (first_filtered / act_filter) * act_filter;
-    if (cancel_n < first_filtered ) cancel_n += act_filter;
-    while (cancel_n < filter_until )
+    uint64_t cancel_n = ((first_filtered * 2ull + 1ull) / act_filter) * act_filter;
+    if (cancel_n < first_filtered )
+    {
+      cancel_n += act_filter;
+    }
+    while (cancel_n < filter_until * 2ull + 1ull)
     {
       cross_out(s, cancel_n);
       cancel_n += act_filter;
     }
   }
-  printf( "filtered %d with %d\n", job->filtered_chunk, job->divider_chunk );
+
+
+
+  printf( "thread %u filtered %d with %d\n", pthread_self(), job->filtered_chunk, job->divider_chunk );
+
 }
 
 
-void cross_out (struct state * s, uint64_t n) {
-  uint64_t byte_number = n >> 3ull;
-  uint64_t mod = n & 7ull;
-  s->chunk_mngr->sieve_data[byte_number] =
-    s->chunk_mngr->sieve_data[byte_number] & (~(1ull << mod));
+inline void cross_out (struct state * s, uint64_t n) 
+{
+
+  if ( n & 1ull == 1)
+  {
+    n = n >> 1;
+    uint64_t byte_number = n >> 3ull;
+    uint64_t mod = n & 7ull;
+    s->chunk_mngr->sieve_data[byte_number] = s->chunk_mngr->sieve_data[byte_number] | (1ull << mod);
+  }
 }
 
 void jobs_save_finished (struct state * s, int n)
 {
+  printf("saved %d: \n",n);
   n--;
-
-  /* for test */
-  int valami=100;
-
-  s->chunk_mngr->primes_index[n]=s->chunk_mngr->primes_count+1;
-
   uint64_t i;
-  for (i = n * s->chunk_size; i < (n+1) * s->chunk_size; i++)
+  for (i = n * s->chunk_size * 8; i < (n+1) * s->chunk_size * 8; i++)
   {
-    if ( ( s->chunk_mngr->sieve_data[i >> 3ull] & (1 << (i & 7) ) ) != 0)
+    if ( ( s->chunk_mngr->sieve_data[i >> 3ull] & (1 << (i & 7) ) ) == 0)
     {
-      chunks_write_prime( s, i );
-      if (--valami>0) printf("%u ",s->chunk_mngr->sieve_data[i >> 3ull]);
+      chunks_write_prime( s, 2*i+1 );
     }
   }
+
+  s->chunk_mngr->primes_index[n+1]=s->chunk_mngr->primes_count;
+  /*for (int i = 0; i < s->chunk_mngr->primes_count; i++) 
+  {
+    printf("%u ", chunks_get_prime(s,i));
+  }
+  printf("\n\n");*/
 
 }
 
@@ -216,7 +235,7 @@ int jobs_next( struct state * s, struct job * job )
     printf("%d ", j->processed[kk].n);
   }
   printf("\n");
-*/
+  */
   if ( j->finished )
     return 0;
 
@@ -288,7 +307,6 @@ void jobs_finish( struct state * s, struct job * job, int * save )
     {
       save_k++;
     }
-    printf("Saved %d\n", j->processed[save_k].n);
 
     j->working_on--;
 

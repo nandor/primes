@@ -102,20 +102,34 @@ void threads_create( struct state * s )
 
   // Initialise the mutex which will sync the job queue
   if ( pthread_mutex_init( &t->queue_lock, NULL ) )
+  {
     state_error( s, "Cannot create queue mutex" );
+  }
 
   // Initialise the mutex which will be used with the signal
   if ( pthread_mutex_init( &t->exit_lock, NULL ) )
+  {
     state_error( s, "Cannot create exit mutex" );
+  }
 
   // Initialse the mutex which will guard the data_primes array
   if ( pthread_mutex_init( &t->save_lock, NULL ) )
+  {
     state_error( s, "Cannot create save mutex" );
+  }
+
+  // Initialise the mutex which will guard the output array
+  if ( pthread_rwlock_init( &t->write_lock, NULL ) )
+  {
+    state_error( s, "Cannot create write mutex" );
+  }
 
   // Initialise the cond variable which will signal
   // the main thread when we're done
   if ( pthread_cond_init( &t->exit_cond, NULL) )
+  {
     state_error( s, "Cannot create exit signal" );
+  }
 
   // Allocate storage space for the thread handles
   sz = sizeof( pthread_t ) * s->thread_count;
@@ -170,6 +184,7 @@ void threads_destroy( struct state * s )
   pthread_mutex_destroy( &t->queue_lock );
   pthread_mutex_destroy( &t->exit_lock );
   pthread_mutex_destroy( &t->save_lock );
+  pthread_rwlock_destroy( &t->write_lock );
   pthread_cond_destroy( &t->exit_cond );
 }
 

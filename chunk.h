@@ -68,3 +68,4 @@ void     chunks_write_prime( struct state *, uint64_t );
 uint64_t chunks_get_prime( struct state *, uint64_t );
 
 #endif
+

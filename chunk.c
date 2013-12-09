@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include <sys/stat.h>
 #include "chunk.h"
 #include "state.h"
+#include "thread.h"
 
 void chunks_create( struct state * s )
 {
@@ -43,7 +44,7 @@ void chunks_create( struct state * s )
   }
 
   /* Prepares the output file for the primes */
-  c->primes_capacity = 1;
+  c->primes_capacity = s->chunk_size << 4;
   c->primes_count = 0;
   c->primes_size = c->primes_capacity * sizeof( uint64_t );
   if ( ( c->primes_fd = open( s->primes_file, O_CREAT |
@@ -53,7 +54,10 @@ void chunks_create( struct state * s )
   }
 
   lseek( c->primes_fd, c->primes_size - 1, SEEK_SET );
-  (void)write( c->primes_fd, &zero, 1 );
+  if ( write( c->primes_fd, &zero, 1 ) != 1 )
+  {
+    state_error( s, "Cannot resize file '%s'", s->primes_file );
+  }
   lseek( c->primes_fd, 0, SEEK_SET );
 
   /* Create the index which will store the address of the
@@ -82,7 +86,10 @@ void chunks_create( struct state * s )
   }
 
   lseek( c->sieve_fd, c->sieve_size - 1, SEEK_SET );
-  (void)write( c->sieve_fd, &zero, 1 );
+  if ( write( c->sieve_fd, &zero, 1 ) != 1 )
+  {
+    state_error( s, "Cannot resize file '%s'", s->sieve_file );
+  }
   lseek( c->sieve_fd, 0, SEEK_SET );
 
   /* mmap the chunk cache */
@@ -114,6 +121,14 @@ void chunks_destroy( struct state * s )
 
   if ( c->primes_fd > 0)
   {
+    if ( c->primes_size > c->primes_count * sizeof( uint64_t ) )
+    {
+      if ( ftruncate( c->primes_fd, c->primes_count * sizeof( uint64_t ) ) < 0 )
+      {
+        fprintf( stderr, "Cannot truncate file '%s'", s->primes_file );
+      }
+    }
+
     close( c->primes_fd );
     c->primes_fd = -1;
   }
@@ -142,6 +157,8 @@ void chunks_write_prime( struct state * s, uint64_t prime )
   /* Double the size of the output file */
   if ( c->primes_count >= c->primes_capacity )
   {
+    pthread_rwlock_wrlock( &s->thread_mngr->write_lock );
+
     if ( ftruncate( c->primes_fd, c->primes_size << 1ull ) < 0 )
     {
       state_error( s, "Cannot resize output size" );
@@ -153,23 +170,20 @@ void chunks_write_prime( struct state * s, uint64_t prime )
       state_error( s, "Cannot remap output file '%s'", s->primes_file );
     }
 
+    c->primes_data = addr;
     c->primes_size <<= 1;
     c->primes_capacity <<= 1;
-    c->primes_data = addr;
+
+    pthread_rwlock_unlock( &s->thread_mngr->write_lock );
   }
 
-  c->primes_data[ c->primes_count++ ] = prime;
-
-  /*for (uint64_t i = 0; i < s->chunk_mngr->primes_count; i++) 
-  {
-    printf("%llu ",chunks_get_prime(s,i));
-  }
-  printf("\n");*/
+  c->primes_data[ __sync_fetch_and_add( &c->primes_count, 1 ) ] = prime;
 }
 
 uint64_t chunks_get_prime( struct state * s, uint64_t idx )
 {
   struct chunks * c;
+  uint64_t prime;
 
   if ( !( c = s->chunk_mngr ) )
   {
@@ -181,5 +195,9 @@ uint64_t chunks_get_prime( struct state * s, uint64_t idx )
     state_error( s, "Invalid prime index" );
   }
 
-  return c->primes_data[ idx ];
+  pthread_rwlock_rdlock( &s->thread_mngr->write_lock );
+  prime = c->primes_data[ idx ];
+  pthread_rwlock_unlock( &s->thread_mngr->write_lock );
+
+  return prime;
 }

@@ -35,6 +35,7 @@ struct threads
   pthread_mutex_t queue_lock;
   pthread_mutex_t exit_lock;
   pthread_mutex_t save_lock;
+  pthread_rwlock_t write_lock;
   pthread_cond_t exit_cond;
 
   volatile char running;
